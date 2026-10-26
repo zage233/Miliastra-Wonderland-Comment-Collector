@@ -1,0 +1,2852 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>奇域评论收集器</title>
+<link rel="icon" type="image/x-icon" href="/app.ico">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --text:#e6e9ef; --dim:#8b93a5; --dim2:#6b7385;
+    --good:#4ade80; --bad:#f87171; --dflt:#fbbf24; --accent:#5b9dff; --star:#ffd166;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:14px/1.6 "Microsoft YaHei","PingFang SC",system-ui,sans-serif}
+  button,select,input{background:var(--panel2);color:var(--text);
+    border:1px solid var(--line);border-radius:6px;padding:6px 10px;font:inherit;outline:none}
+  select:focus,input:focus{border-color:var(--accent)}
+  button{cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button.primary:hover{filter:brightness(1.1)}
+  button.danger{color:var(--bad);border-color:#4a2424}
+  button.danger:hover{background:#2a1212;border-color:var(--bad)}
+  .muted{color:var(--dim);font-size:13px}
+  .sep{width:1px;height:20px;background:var(--line);flex:none}
+  /* ── 头部 ── */
+  header{position:sticky;top:0;z-index:20;background:rgba(23,26,33,.98);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .brandrow{display:flex;align-items:baseline;gap:12px;padding-top:15px;flex-wrap:wrap}
+  .brandrow h1{margin:0;font-size:17px;letter-spacing:.4px}
+  .brandsub{color:var(--dim2);font-size:12px}
+  /* 状态 + 语言控件永远一起靠右，即使标题很长换行了也留在右上 */
+  .brandright{margin-left:auto;display:flex;align-items:center;gap:10px;flex:none}
+  .status{color:var(--dim);font-size:12.5px;display:flex;align-items:center;gap:6px}
+  .bar1{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 0 10px}
+  .btnset{display:flex;gap:6px}
+  .vsep{width:1px;height:20px;background:var(--line);margin:0 4px}
+  /* 界面语言：放在工具栏最右、单独一块、带标签和强调色，让人一眼看出这是语言切换 */
+  .langbox{display:flex;align-items:center;gap:7px;flex:none;
+    padding:4px 8px 4px 11px;border:1px solid var(--accent);border-radius:9px;
+    background:rgba(91,157,255,.09);transition:background .15s}
+  .langbox:hover{background:rgba(91,157,255,.17)}
+  .langbox .globe{font-size:14px;line-height:1;color:var(--accent)}
+  .langbox label{color:var(--accent);font-size:12.5px;font-weight:700;letter-spacing:.3px;cursor:pointer}
+  .langbox select{min-width:112px;background:transparent;border:0;color:var(--text);
+    font-size:13px;font-weight:600;padding:2px 4px;cursor:pointer;outline:none}
+  .langbox select option{background:var(--panel2);color:var(--text)}
+  /* 自绘日历（原生 type=date 的日历是浏览器语言，页面改不了，所以自己画） */
+  .dp{position:fixed;z-index:300;background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+    padding:10px;box-shadow:0 12px 32px rgba(0,0,0,.55);width:252px;font-size:13px;user-select:none}
+  .dp .dph{display:flex;align-items:center;gap:4px;margin-bottom:8px}
+  .dp .dph b{flex:1;text-align:center;font-size:13px;font-weight:600}
+  .dp .dph button{background:transparent;border:0;color:var(--dim);cursor:pointer;font-size:14px;
+    padding:2px 7px;border-radius:6px;line-height:1.2}
+  .dp .dph button:hover{background:var(--line);color:var(--text)}
+  .dp .dpg{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+  .dp .dpg span{text-align:center;color:var(--dim2);font-size:11px;padding:4px 0}
+  .dp .dpg i{text-align:center;padding:5px 0;border-radius:6px;cursor:pointer;font-style:normal}
+  .dp .dpg i:hover{background:var(--line)}
+  .dp .dpg i.mute{color:var(--dim2);opacity:.45}
+  .dp .dpg i.td{color:var(--accent);font-weight:700}
+  .dp .dpg i.on{background:var(--accent);color:#0b1020;font-weight:700}
+  .dp .dpf{display:flex;justify-content:space-between;margin-top:8px}
+  .dp .dpf button{background:transparent;border:0;color:var(--accent);cursor:pointer;
+    font-size:12.5px;padding:4px 6px;border-radius:6px}
+  .dp .dpf button:hover{background:rgba(91,157,255,.15)}
+  /* 对话框里的分组小标题 */
+  .fieldset{margin-top:15px}
+  .fieldset:first-of-type{margin-top:6px}
+  .flabel{color:var(--dim);font-size:12.5px;font-weight:600;margin-bottom:6px}
+  .frow{display:flex;gap:8px}
+  .frow input{width:auto;flex:1}
+  .frow button{white-space:nowrap}
+  h1{font-size:15px;margin:0;font-weight:600;white-space:nowrap;color:var(--accent)}
+  .tabs{display:flex;gap:2px}
+  .tab{padding:7px 18px;border-radius:8px 8px 0 0;cursor:pointer;color:var(--dim);
+    font-size:13.5px;user-select:none;border:1px solid transparent;border-bottom:none}
+  .tab:hover{color:var(--text)}
+  .tab.on{background:var(--bg);color:var(--text);border-color:var(--line);font-weight:600}
+  .tab .n{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;
+    background:var(--panel2);color:var(--dim);font-size:11px;text-align:center}
+  .tab.on .n{background:var(--accent);color:#fff}
+  .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-bottom:12px}
+  .chips{display:flex;gap:5px;flex-wrap:wrap}
+  .chip{background:var(--panel2);border:1px solid var(--line);border-radius:999px;
+    padding:3px 11px;cursor:pointer;font-size:12.5px;white-space:nowrap;user-select:none;color:var(--dim)}
+  .chip:hover{border-color:var(--accent);color:var(--text)}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chip.good.on{background:var(--good);border-color:var(--good);color:#06210f}
+  .chip.bad.on{background:var(--bad);border-color:var(--bad);color:#2a0808}
+  .chip.dflt.on{background:var(--dflt);border-color:var(--dflt);color:#2a1d02}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--dim2);margin-right:5px}
+  .dot.run{background:var(--dflt);animation:pulse 1s infinite}
+  .dot.ok{background:var(--good)} .dot.err{background:var(--bad)}
+  @keyframes pulse{50%{opacity:.25}}
+  /* ── 主体 ── */
+  /* ── 布局容器：头部和正文共用同一个居中宽度，保证左右对齐 ── */
+  .hwrap{max-width:1120px;margin:0 auto;padding:0 22px}
+  section{display:none}
+  section.on{display:block;padding:16px 22px 80px;max-width:1120px;margin:0 auto}
+  @media (max-width:780px){
+    .hwrap{padding:0 12px}
+    section.on{padding:12px 12px 64px}
+  }
+  .stats{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:10px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 13px;min-width:88px}
+  .stat b{display:block;font-size:18px;line-height:1.3}
+  .stat span{color:var(--dim);font-size:11.5px}
+  .bar{height:7px;border-radius:4px;overflow:hidden;display:flex;background:var(--panel2);
+    border:1px solid var(--line);margin-bottom:14px}
+  .bar i{display:block;height:100%}
+  /* ── 评论卡 ── */
+  .card{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--dim2);
+    border-radius:8px;padding:11px 13px;margin-bottom:9px;position:relative;transition:box-shadow .2s}
+  .card.good{border-left-color:var(--good)} .card.bad{border-left-color:var(--bad)}
+  .card.dflt{opacity:.6} .card.dflt:hover{opacity:1}
+  .card.flash{box-shadow:0 0 0 2px var(--star);opacity:1}
+  .chead{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;margin-bottom:5px;padding-right:30px}
+  .nick{font-weight:600}
+  .floor{color:var(--dim2);font-size:11.5px;font-variant-numeric:tabular-nums}
+  .time{color:var(--dim);font-size:11.5px}
+  .tag{font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+  .tag.good{color:var(--good);border-color:#2c5c3f}
+  .tag.bad{color:var(--bad);border-color:#5c2c2c}
+  .tag.dflt{color:var(--dflt);border-color:#5c4a1a}
+  .content{white-space:pre-wrap;word-break:break-word}
+  .foot{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;color:var(--dim2);font-size:11.5px}
+  .subs{margin-top:6px;padding-left:11px;border-left:2px solid var(--line);color:var(--dim);font-size:13px}
+  .subs div{margin:2px 0}
+  .star{position:absolute;top:9px;right:10px;font-size:12px;line-height:1.5;
+    padding:2px 10px;border-radius:999px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--dim);cursor:pointer}
+  .star:hover{border-color:var(--star);color:var(--star)}
+  .star.on{color:var(--star);border-color:#5c4a1a;background:#2a2210}
+  .empty{text-align:center;color:var(--dim);padding:52px 0}
+  .more{display:block;width:100%;margin:14px 0;padding:11px}
+  details{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-bottom:14px}
+  summary{padding:9px 13px;cursor:pointer;user-select:none;font-size:13px}
+  details .body{padding:0 13px 12px}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  td,th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+  th{color:var(--dim);font-weight:500;font-size:12px}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  /* ── 便签 ── */
+  .note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--star);
+    border-radius:8px;padding:11px 13px;margin-bottom:9px}
+  .note .mytext{width:100%;background:#14171d;border:1px solid var(--line);border-radius:6px;
+    padding:6px 9px;color:var(--text);font:inherit;font-size:13px;margin-top:8px;resize:vertical;min-height:34px}
+  .note .acts{display:flex;gap:8px;margin-top:8px}
+  .note .acts button{font-size:12px;padding:4px 10px}
+  .notemeta{color:var(--dim2);font-size:11.5px;margin-top:6px}
+  /* ── 管理 ── */
+  .mgmt{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:14px;overflow-x:auto}
+  .mgmt h3{margin:0 0 10px;font-size:14px;color:var(--accent)}
+  .mgmt .rowacts{display:flex;gap:8px;flex-wrap:wrap}
+  code{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:12px}
+  /* ── 同步进度 ── */
+  #syncPanel{display:none;background:#12151b;border-bottom:1px solid var(--line)}
+  #syncPanel.show{display:block}
+  #log{max-height:190px;overflow:auto;padding:9px 18px;
+    font:12px/1.7 Consolas,"Courier New",monospace;white-space:pre-wrap;color:var(--dim)}
+  #log .ok{color:var(--good)} #log .err{color:var(--bad)}
+  /* ── 弹窗 ── */
+  .dialog{border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);
+    padding:0;max-width:560px;width:92%}
+  .dialog::backdrop{background:rgba(0,0,0,.65)}
+  .dbody{padding:17px 19px;max-height:78vh;overflow:auto}
+  .dbody h2{margin:0 0 12px;font-size:16px}
+  .dbody label{display:block;margin:13px 0 4px;color:var(--dim);font-size:13px}
+  .dbody input{width:100%}
+  #gpSelect{width:100%}
+  .req{color:var(--bad)} .opt{color:var(--dim2)}
+  .dacts{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+  .hint{color:var(--dim2);font-size:12px;margin-top:5px;line-height:1.65}
+  .hint strong{color:var(--dim)}
+  .preview{display:none;margin-top:11px;padding:9px 11px;border-radius:8px;
+    background:#101820;border:1px solid #24405c;font-size:13px;align-items:center;gap:9px}
+  .preview.show{display:flex}
+  .preview img{width:48px;height:48px;border-radius:6px;object-fit:cover;flex:none;background:#222}
+  .preview .nm{font-weight:600;font-size:15px}
+  .preview .sub{color:var(--dim);font-size:12px}
+  .searchlist{margin-top:9px;max-height:210px;overflow:auto}
+  .cand{display:flex;gap:9px;align-items:center;padding:7px 9px;border:1px solid var(--line);
+    border-radius:8px;margin-bottom:5px;cursor:pointer;background:var(--panel2)}
+  .cand:hover{border-color:var(--accent)}
+  .cand img{width:40px;height:40px;border-radius:6px;object-fit:cover;flex:none;background:#222}
+  .cand .cn{font-weight:600}
+  .cand .cs{color:var(--dim);font-size:12px}
+  .msg{padding:7px 10px;border-radius:6px;margin-top:11px;font-size:13px;display:none}
+  .msg.ok{display:block;background:#12291b;color:var(--good)}
+  .msg.err{display:block;background:#2a1212;color:var(--bad)}
+  #dlgHelp h3{margin:16px 0 5px;font-size:13.5px;color:var(--accent)}
+  #dlgHelp h3:first-of-type{margin-top:6px}
+  #dlgHelp p,#dlgHelp li{font-size:13px;line-height:1.75}
+  #dlgHelp ul{margin:5px 0;padding-left:19px}
+  .rowsel{display:flex;align-items:center;gap:8px;margin-top:8px}
+  .rowsel select{min-width:150px}
+  /* 分服切换 + 国际服区服大按钮 */
+  .svswitch{display:flex;gap:6px;margin:2px 0 15px;padding:5px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
+  .svswitch .sv{flex:1;padding:9px 10px;border:0;background:transparent;color:var(--dim);border-radius:7px;font-size:13.5px;cursor:pointer;transition:.15s}
+  .svswitch .sv:hover{color:var(--text)}
+  .svswitch .sv.on{background:var(--accent);color:#0d1117;font-weight:600}
+  .regions{display:flex;gap:8px;flex-wrap:wrap}
+  .regions .rg{padding:9px 18px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:13.5px;cursor:pointer;transition:.15s}
+  .regions .rg:hover{border-color:var(--accent)}
+  .regions .rg.on{border-color:var(--accent);background:#1b2635;color:var(--accent);font-weight:600}
+  .grouptip{font-size:12.5px;color:var(--accent);line-height:1.6;margin:6px 0 10px}
+  .grouptip:empty{display:none}
+  .notesrc{font-size:12px;color:var(--accent);margin:-2px 0 7px}
+  /* 便签页的分组标题（可折叠） */
+  .ngroup{display:flex;align-items:center;gap:7px;padding:9px 11px;margin:12px 0 7px;border-radius:7px;
+    background:#12161d;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;user-select:none}
+  .ngroup:hover{background:#161c25}
+  .ngroup .arw{color:var(--dim2);width:11px;flex:none}
+  .ngroup .gc{color:var(--dim2);font-weight:400;font-size:12px;margin-left:auto}
+  .ngroup.sub{margin-left:20px;font-size:12.5px;background:transparent;padding:6px 11px}
+  .ngroup.sub:hover{background:var(--panel2)}
+  .grprow td{background:#12161d;color:var(--dim);font-size:12.5px;font-weight:600;
+    padding:9px 8px;border-top:1px solid var(--line);cursor:pointer;user-select:none}
+  /* 注意：flex 不能直接写在 td 上，否则 colspan 失效、整行宽度会塌成内容宽 */
+  .grprow .grpinner{display:flex;align-items:center;gap:8px;width:100%}
+  .grprow:hover td{background:#161c25}
+  .grprow.open td{background:#161d27}
+  .grprow .arw{color:var(--dim2);width:12px;flex:none}
+  .grprow .gname{color:var(--text);font-size:13px}
+  .grprow .gmeta{color:var(--dim2);font-weight:400;font-size:12px}
+  .grprow .gwarn{color:var(--dflt);font-weight:400;font-size:12px}
+  .subrow td{background:#0e1218}
+  /* 管理表格固定列宽：否则分组行的按钮会把表格撑宽，出现横向滚动，各列位置全跑掉 */
+  #mgmtTable{table-layout:fixed;width:100%}
+  #mgmtTable col:nth-child(1){width:22%}
+  #mgmtTable col:nth-child(2){width:9%}
+  #mgmtTable col:nth-child(3){width:9%}
+  #mgmtTable col:nth-child(4){width:6%}
+  #mgmtTable col:nth-child(5){width:9%}
+  #mgmtTable col:nth-child(6){width:17%}
+  #mgmtTable col:nth-child(7){width:28%}
+  #mgmtTable td:nth-child(7){white-space:nowrap;text-align:right}
+  #mgmtTable td:nth-child(7) button{margin-left:6px;font-size:11.5px;padding:3px 9px}
+  #mgmtTable th{white-space:nowrap}
+  /* 自定义关卡下拉：分组可折叠 */
+  .gsel{position:relative}
+  .gsel > button{display:flex;align-items:center;gap:10px;min-width:320px;max-width:460px;text-align:left}
+  .gsel > button .arw{margin-left:auto;color:var(--dim);flex:none}
+  .gsel.open > button{border-color:var(--accent)}
+  .gselpanel{position:absolute;top:calc(100% + 5px);left:0;z-index:60;min-width:360px;max-width:520px;
+    max-height:62vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:9px;
+    box-shadow:0 10px 30px rgba(0,0,0,.55);padding:6px}
+  .gsg{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:6px;cursor:pointer;
+    font-size:12.5px;font-weight:600;color:var(--text);user-select:none}
+  .gsg:hover{background:var(--panel2)}
+  .gsg.cur{color:var(--accent)}
+  .gsg .arw{color:var(--dim2);width:11px;flex:none}
+  .gsg .cnt{color:var(--dim2);font-weight:400;margin-left:auto;font-size:11.5px}
+  .gsi{padding:6px 8px 6px 26px;border-radius:6px;cursor:pointer;font-size:12.5px;color:var(--dim)}
+  .gsi:hover{background:var(--panel2);color:var(--text)}
+  .gsi.on{background:#1b2635;color:var(--accent);font-weight:600}
+
+  /* 阅读工作台：横向筛选工具栏、柔和层次和统一留白，所有资源保留在本地。 */
+  :root{
+    color-scheme:dark;
+    --bg:#10151e;--panel:#18202c;--panel2:#202a38;--line:#2b3748;
+    --text:#e9edf5;--dim:#a2aec1;--dim2:#7f8da3;
+    --accent:#91a7ff;--good:#73d5ae;--bad:#f49a9e;--dflt:#ddbd7f;--star:#edcd87;
+    --radius:16px;--header-height:176px;
+  }
+  html{scroll-padding-top:calc(var(--header-height) + 24px)}
+  *{scrollbar-width:thin;scrollbar-color:#455570 transparent}
+  body{background:radial-gradient(ellipse at 15% 0,rgba(95,117,184,.09),transparent 48%),var(--bg);
+    font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.7;-webkit-font-smoothing:antialiased}
+  button,input,select{min-height:40px;border-radius:10px;padding:8px 13px;transition:background .16s,border-color .16s,box-shadow .16s}
+  button{font-size:13px;font-weight:500}
+  button:hover:not(:disabled){background:#293549;border-color:#536887}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#111b35;font-weight:700;box-shadow:0 3px 12px #080c1629}
+  button.primary:hover:not(:disabled){background:#a5b7ff;border-color:#a5b7ff;filter:none}
+  button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{
+    outline:2px solid var(--accent);outline-offset:3px}
+  input::placeholder{color:var(--dim2);opacity:1}
+  input[type=checkbox]{min-height:0;accent-color:var(--accent)}
+  button.danger{border-color:#65424b;color:var(--bad);background:transparent}
+  button.danger:hover:not(:disabled){background:#38232d;border-color:var(--bad)}
+  .hwrap,section.on{max-width:1360px;padding-left:32px;padding-right:32px}
+  header{background:rgba(18,25,36,.94);backdrop-filter:blur(18px);border-bottom-color:#2c3748;box-shadow:0 8px 30px #080d151f}
+  .brandrow{padding-top:15px;gap:14px;align-items:center}
+  .brandmark{display:grid;place-items:center;flex:none;width:38px;height:38px;border:1px solid #485980;
+    border-radius:12px;background:#25324d;color:#b2c0ff}
+  .brandmark svg{width:22px;height:22px}
+  .brandrow h1{font-size:21px;line-height:1.3;font-weight:700;letter-spacing:.3px;color:var(--text);white-space:normal}
+  .brandsub{font-size:12px;color:var(--dim);letter-spacing:.15px}
+  .brandright{gap:18px}
+  .status{font-size:12px}
+  #statusText{max-width:36ch;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dot{width:6px;height:6px;margin:0;flex:none}
+  .langbox{background:#1b2534;border-color:var(--line);border-radius:11px;padding:4px 9px;gap:6px}
+  .langbox:hover{background:#253247}
+  .langbox label{color:var(--dim);font-weight:500;letter-spacing:0}
+  .langbox .globe{color:var(--dim)}
+  .langbox select{min-height:30px;min-width:106px;font-size:12px;font-weight:500;max-width:150px}
+  .langbox:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px #91a5ff22}
+  .langbox select:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .langbox label{padding-right:3px}
+  .bar1{gap:12px;padding:10px 0}
+  .btnset{gap:7px;flex-wrap:wrap}
+  .bar1 .vsep{margin:0 1px;height:25px}
+  .gsel{flex:1 1 300px;min-width:0}
+  .gsel>button{min-width:0;max-width:none;width:100%;min-height:43px;background:#1d293b;border-color:#3a4a65;font-weight:600}
+  #gselLabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #btnAdd{background:transparent;color:var(--accent);box-shadow:none;border-color:#526395}
+  #btnAdd:hover{background:#26324d}
+  .tabs{gap:4px;width:fit-content;padding:3px;margin-bottom:10px;border:1px solid var(--line);border-radius:12px;background:#0e1622}
+  .tab{border:0;border-radius:8px;padding:7px 22px;min-height:36px;color:var(--dim);font-size:13px;background:transparent}
+  .tab.on{background:#2a3851;color:#e6ecff;box-shadow:0 2px 6px #060b1729}
+  .tab:hover:not(.on){background:#1d293b;color:var(--text)}
+  .tab .n{background:#35445f;color:#c5d0e4;line-height:1.6}
+  .tab.on .n{background:#697fc2;color:#fff}
+  section.on{padding-top:24px;padding-bottom:88px}
+  #tab-list.on{display:flex;flex-direction:column;gap:16px}
+  #tab-list.on>*{width:100%;min-width:0}
+  #tab-list>.toolbar{order:0;display:grid;grid-template-columns:minmax(320px,1fr) auto auto;
+    align-items:center;gap:10px 17px;padding:15px 20px;position:static;max-height:none;overflow:visible;
+    border:1px solid var(--line);border-radius:var(--radius);background:var(--panel)}
+  .filter-group{padding:0;border:0;min-width:0}
+  .filter-search{grid-column:1;grid-row:1;display:grid;grid-template-columns:minmax(0,1fr) 168px;gap:10px}
+  #q{min-width:0!important;width:100%;min-height:43px;background:#111b29}
+  #sort{width:100%;font-size:12px;background:#1b2636}
+  .filter-dates{grid-column:2;grid-row:1;display:flex;align-items:center;gap:10px}
+  .filter-dates>#dateLabel{color:var(--dim);font-size:12px;font-weight:500;white-space:nowrap}
+  .date-range{display:grid;grid-template-columns:108px auto 108px;align-items:center;gap:7px}
+  .date-range input{width:100%!important;min-width:0;padding:8px 7px;font-size:11px;text-align:center;background:#111b29}
+  #dateClear{min-height:32px;padding:3px 5px;margin:0;border:0;background:transparent;color:var(--dim);font-size:12px}
+  #dateClear:hover{color:var(--accent)}
+  .filter-moods{grid-column:1/-1;grid-row:2;display:flex;align-items:center;flex-wrap:wrap;gap:12px;
+    padding-top:10px;border-top:1px solid var(--line)}
+  #mood{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{min-height:34px;padding:6px 7px;text-align:center;white-space:normal;line-height:1.4;border-radius:9px;font-weight:500;color:var(--dim);font-size:12px;background:#202b3b}
+  .chip.on{background:#344775;border-color:#6279b1;color:#e6edff}
+  .chip.good.on{background:#234a40;color:#a9eed2;border-color:#4a8a72}
+  .chip.bad.on{background:#4b2c37;color:#ffc4c8;border-color:#8d5362}
+  .chip.dflt.on{background:#493f2c;color:#f5d99e;border-color:#8b7549}
+  #hideDefaultWrap{display:flex;align-items:center;gap:8px;margin:0;font-size:12px;cursor:pointer;
+    min-height:34px;padding:6px 11px;border:1px solid #46577b;border-radius:9px;background:#26334d;color:#d3ddff}
+  #hideDefaultWrap:hover{background:#30415f;border-color:var(--accent)}
+  #hideDefaultWrap:has(#hideDefault:checked){background:#344775;border-color:var(--accent);color:#edf2ff}
+  #hideDefaultWrap:focus-within{outline:2px solid var(--accent);outline-offset:3px}
+  #hideDefault{margin:0;flex:none}
+  .filter-actions{grid-column:3;grid-row:1;display:flex;align-items:center;gap:9px}
+  .filter-actions button{font-size:12px;white-space:nowrap;padding-left:12px;padding-right:12px}
+  #stats{order:1;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin:0}
+  .stat{min-width:0;border-radius:14px;padding:14px 18px 12px;background:#192330;border-color:#2b394d}
+  .stat b{font-size:24px;font-weight:650;letter-spacing:-.5px;font-variant-numeric:tabular-nums;margin-bottom:5px}
+  .stat span{font-size:12px;line-height:1.4;display:block;overflow-wrap:anywhere}
+  #bar{order:2;height:4px;margin:-6px 0 0;border:0;opacity:.85}
+  #filterCount{order:3;margin:0!important;line-height:1.6;color:var(--dim);overflow-wrap:anywhere}
+  #filterCount:empty{display:none}
+  #tplPanel{order:4;margin:0;border-radius:12px;background:#151f2d;border-color:#2a394e;min-width:0;overflow:hidden}
+  #tplPanel summary{padding:10px 17px;color:#b1bfd6;font-size:12px}
+  #tplPanel .body{padding:0 18px 18px;overflow:auto}
+  #list{order:5;min-width:0}
+  .card,.note{border-radius:var(--radius);padding:20px 23px;margin-bottom:14px;border-color:#2c394c;background:#182230;
+    box-shadow:0 4px 18px #080d151a;border-left-width:2px}
+  .card:hover,.note:hover{border-top-color:#43546d;border-right-color:#43546d;border-bottom-color:#43546d}
+  .card.dflt{opacity:1;background:#151e2a}
+  .card.dflt .content{color:#a6b3c8}
+  .chead{gap:10px;margin-bottom:11px;align-items:center;padding-right:85px}
+  .nick{font-size:13.5px;color:#dce5f4}
+  .floor,.time{font-size:11px;color:var(--dim2)}
+  .tag{font-size:10px;padding:2px 7px;line-height:1.5}
+  .tag.good{background:#1e382f;border-color:#2b5143;color:#8edabb}
+  .tag.bad{background:#392731;border-color:#583843;color:#f1adb3}
+  .tag.dflt{background:#302d25;border-color:#4a4230;color:#cfba8d}
+  .content{font-size:14px;line-height:1.9;max-width:110ch;color:#d4ddec;overflow-wrap:anywhere}
+  .foot,.notemeta{margin-top:13px;font-size:11px;color:#8191a9}
+  .star{top:17px;right:18px;min-height:28px;padding:3px 10px;font-size:11px;border-color:#344257;background:#1b283a;color:#9eafc6}
+  .star.on{background:#3c3322;color:#f1d595;border-color:#72603a}
+  .subs{margin-top:16px;padding:9px 0 9px 14px;max-width:82ch;border-color:#3a4b66;font-size:12.5px;line-height:1.8}
+  .more{border-style:dashed;border-color:#3b4c67;background:#16202e;padding:13px;border-radius:12px;color:var(--dim)}
+  .empty{padding:64px 22px;border:1px dashed #35445c;border-radius:var(--radius);background:#151f2b}
+  #tab-notes>.toolbar{padding:16px 20px;margin-bottom:24px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);gap:12px}
+  #noteList{width:100%;max-width:none;margin:0}
+  .note{border-left-color:var(--star)}
+  .note .mytext{background:#111c2b;border-radius:10px;padding:12px 14px;min-height:58px;font-size:13px;line-height:1.8}
+  .note .acts{margin-top:14px;gap:9px;flex-wrap:wrap}
+  .note .acts button{min-height:33px;border-radius:8px;padding:5px 11px}
+  .notesrc{color:#a9b9ee;font-size:11.5px;margin-bottom:12px}
+  .ngroup{border:1px solid var(--line);border-radius:11px;padding:13px 17px;background:#1c2839;margin-top:22px}
+  .ngroup.sub{background:transparent;border-color:transparent}
+  .mgmt{border-radius:var(--radius);padding:24px;margin-bottom:22px;background:#182230}
+  .mgmt h3{font-size:15px;color:#dce5f4;margin-bottom:19px}
+  .mgmt-table-scroll{overflow-x:auto}
+  #mgmtTable{table-layout:fixed;min-width:1000px}
+  #mgmtTable th,#mgmtTable td{padding:13px 12px;overflow-wrap:anywhere}
+  #mgmtTable th{font-size:11.5px;color:#a7b5ca;background:#141e2c;white-space:normal}
+  #mgmtTable td:nth-child(7){min-width:245px;white-space:normal}
+  #mgmtTable td:nth-child(7) button{margin:3px 0 3px 6px;min-height:30px}
+  .grprow td{border-top:1px solid #35455d;background:#202d41!important}
+  .grprow .grpinner{gap:12px;flex-wrap:wrap}
+  .grprow .gname{font-size:14px}
+  .grprow .gmeta{color:#9cabc1;font-size:11.5px}
+  .grprow button{min-height:31px;padding:5px 10px;font-size:11px}
+  .subrow td{background:#16202f}
+  .mgmt .rowacts{gap:11px}
+  #syncPanel{background:#111c2b;border-color:#35445b}
+  #log{max-width:1360px;margin:0 auto;max-height:180px;padding:16px 32px;font-size:11.5px;line-height:1.8}
+  .dialog{max-width:640px;border-radius:20px;border-color:#465875;box-shadow:0 30px 100px #0008}
+  .dialog::backdrop{background:#060c16bd;backdrop-filter:blur(5px)}
+  .dbody{padding:27px 30px;max-height:85dvh}
+  .dbody h2{font-size:20px;margin-bottom:22px;color:#ecf1fc}
+  .fieldset{margin-top:23px}
+  .flabel{margin-bottom:10px;color:#b3bfd2}
+  .hint{color:#91a0b7;font-size:12px;line-height:1.85;margin-top:9px}
+  .dacts{padding-top:17px;border-top:1px solid var(--line);gap:10px;margin-top:24px;flex-wrap:wrap}
+  .svswitch{padding:5px;border-radius:12px;background:#101927;gap:5px;margin-bottom:21px}
+  .svswitch .sv.on{color:#111b35}
+  .regions .rg.on{background:#2a3b60;color:#c4d0ff;border-color:#6d83bc}
+  .preview{padding:14px;background:#1a2b3d;border-color:#3b5771;border-radius:12px}
+  .gselpanel{min-width:min(380px,calc(100vw - 48px));max-width:min(540px,calc(100vw - 48px));border-radius:14px;padding:9px;box-shadow:0 18px 50px #0006}
+  .gsg{padding:10px;font-size:13px}
+  .gsi{padding:9px 12px 9px 29px}
+  .gsi.on{background:#2c3d60;color:#c7d4ff}
+  .dp{background:#1a2638;border-color:#455777;border-radius:14px;padding:14px}
+  .dp .dph button,.dp .dpf button{min-height:30px}
+  @media(min-width:1700px){.hwrap,section.on,#log{max-width:1460px}}
+  @media(max-width:1100px){
+    .brandsub{display:none}.brandrow{padding-top:19px}
+    .bar1{gap:9px}.bar1 .vsep{display:none}.gsel{flex-basis:100%}
+    #tab-list>.toolbar{grid-template-columns:minmax(0,1fr) auto}
+    .filter-search{grid-column:1/-1;grid-row:1}.filter-dates{grid-column:1;grid-row:2}
+    .filter-actions{grid-column:2;grid-row:2}.filter-moods{grid-column:1/-1;grid-row:3}
+    .stat{padding:15px 13px}.stat b{font-size:23px}
+    .card,.note{padding:18px}.chead{gap:7px}.content{font-size:13.5px}
+  }
+  @media(max-width:850px){
+    .hwrap,section.on{padding-left:20px;padding-right:20px}
+    header{position:relative}.brandright{gap:10px}.brandrow h1{font-size:19px}
+    #stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .chip{padding:7px 11px}.filter-actions button{padding-left:13px;padding-right:13px}
+    .mgmt{padding:19px}.status{max-width:160px}.dialog{width:94%;max-width:620px}
+  }
+  @media(max-width:520px){
+    .hwrap,section.on{padding-left:14px;padding-right:14px}
+    .brandrow{gap:10px}.brandmark{width:32px;height:32px;border-radius:10px}.brandrow h1{font-size:17px;flex:1}
+    .brandright{width:100%;justify-content:space-between}.status{max-width:54%}.langbox select{min-width:100px}
+    .bar1{padding-top:17px;padding-bottom:16px;gap:9px}.btnset{flex:1;gap:6px}.btnset button{flex:1;padding:7px 9px;font-size:11px}
+    .bar1 .btnset:nth-of-type(3){flex-basis:100%}#btnAdd{font-size:11px;padding:7px 10px}
+    .tabs{width:100%;margin-bottom:13px}.tab{flex:1;padding:7px 10px;font-size:12px}
+    section.on{padding-top:20px}.stat{padding:13px 10px;border-radius:11px}.stat b{font-size:22px}.stat span{font-size:10px}
+    #tab-list>.toolbar{display:flex;flex-direction:column;align-items:stretch;padding:15px}
+    .filter-search{grid-template-columns:minmax(0,1fr) 124px}.filter-dates{flex-wrap:wrap;gap:8px}
+    .date-range{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);flex:1;min-width:200px}
+    .date-range input{font-size:11px}.filter-actions{justify-content:flex-end}#mood{width:100%;gap:7px}.chip{flex:1 1 28%;font-size:11px}
+    #hideDefaultWrap{margin-left:0}.filter-moods{padding-top:12px}
+    .card,.note{padding:17px 15px;border-radius:13px}.chead{padding-right:0;margin-top:32px;gap:7px}.star{top:12px;right:12px}
+    .content{font-size:14px;line-height:1.85}.foot{font-size:10.5px}.subs{font-size:12px;padding-left:10px}
+    .dbody{padding:22px 18px}.dbody h2{font-size:18px}.frow{flex-wrap:wrap}.frow input{min-width:140px}
+    .regions{gap:7px}.regions .rg{padding:8px 13px;font-size:12px}.rowsel{align-items:stretch;flex-direction:column}
+    #log{padding:13px 16px}.gselpanel{min-width:calc(100vw - 28px);left:0}
+  }
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.onboarding{padding:28px!important;max-width:620px;max-height:88vh;overflow:auto;box-sizing:border-box}
+.onboard-progress{display:flex;gap:7px}.onboard-progress i{height:4px;flex:1;background:var(--line);border-radius:4px}.onboard-progress i.active{background:var(--accent)}
+.onboard-counter{color:var(--dim);font-size:12px;margin:20px 0 8px}.onboarding h2{margin:0 0 16px;font-size:23px}.onboard-body{line-height:1.85;margin:0 0 22px;white-space:pre-line}.onboarding select{display:block;width:100%;margin-top:8px}.onboarding [hidden]{display:none!important}.onboard-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:26px}.onboard-actions span{flex:1}#btnTutorial{font-size:12px;padding:6px 10px;white-space:normal}
+.batch-entry{margin:0 0 18px;color:var(--accent);border-color:#526395}.batch-row{display:grid;grid-template-columns:100px minmax(0,1fr);gap:5px 14px;padding:12px 0;border-bottom:1px solid var(--line)}.batch-row label{margin:0;align-self:center;overflow-wrap:anywhere}.batch-result{grid-column:2;font-size:12px;overflow-wrap:anywhere}.batch-result:empty{display:none}.batch-result.ok{color:var(--good)}.batch-result.err{color:var(--bad)}.dbody .batch-sync{display:flex;align-items:center;gap:9px;margin-top:18px}.batch-sync input{width:auto;flex:none}#batchMessage{white-space:pre-wrap}#batchRows input{min-width:0}@media(max-width:480px){.batch-row{grid-template-columns:1fr;gap:7px}.batch-result{grid-column:1}}
+#dlgBatchAdd{max-width:780px}#dlgBatchAdd .dbody{padding:22px 24px;max-height:86vh}#batchRows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px}#batchRows .batch-row{grid-template-columns:1fr;gap:6px}#batchRows .batch-result{grid-column:1}#dlgBatchAdd .dacts{margin-top:16px}@media(max-width:600px){#batchRows{grid-template-columns:1fr}#dlgBatchAdd .dbody{padding:18px}}
+#dlgBatchAdd .dbody{padding-bottom:0}#dlgBatchAdd .dacts{position:sticky;bottom:0;z-index:2;background:var(--panel);margin:16px -24px 0;padding:12px 24px;border-top:1px solid var(--line)}@media(max-width:600px){#dlgBatchAdd .dacts{margin-left:-18px;margin-right:-18px;padding:12px 18px}}
+/* Add dialog: aligned heading/action, quiet server tabs. */
+.add-dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:22px}
+.add-dialog-heading #addTitle{margin:0;font-size:21px;line-height:1.4;flex:1;min-width:0}
+.add-dialog-heading .batch-entry{margin:0;max-width:52%;padding:8px 11px;min-height:36px;border:1px solid #3b4a64;border-radius:9px;background:#202b3d;color:#bdcaff;font-size:12px;line-height:1.5;text-align:center;box-shadow:none}
+.add-dialog-heading .batch-entry:hover{background:#2a3750;border-color:#7185b5}
+#dlgAdd .svswitch{margin:0 0 22px;padding:0;gap:0;background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0}
+#dlgAdd .svswitch .sv{padding:12px 10px;background:transparent;border:0;border-bottom:2px solid transparent;border-radius:0;color:var(--dim);font-size:13px;line-height:1.6}
+#dlgAdd .svswitch .sv:hover{background:#25324a55;color:var(--text)}
+#dlgAdd .svswitch .sv.on{background:transparent;border-bottom-color:var(--accent);color:#c3cfff;font-weight:650}
+#tab-notes>.toolbar{margin-bottom:18px}
+#noteList>.ngroup:first-child{margin-top:0}
+@media(max-width:480px){.add-dialog-heading{gap:10px;align-items:flex-start}.add-dialog-heading #addTitle{font-size:18px}.add-dialog-heading .batch-entry{font-size:11px;padding:7px 9px;max-width:55%}#dlgAdd .svswitch .sv{font-size:12px;padding:11px 7px}}
+#dlgAdd .dbody{padding-bottom:0}#dlgAdd .dacts{position:sticky;bottom:0;z-index:3;background:var(--panel);margin:24px -30px 0;padding:14px 30px}@media(max-width:600px){#dlgAdd .dacts{margin-left:-18px;margin-right:-18px;padding:13px 18px}}
+.batch-input-row{display:flex;align-items:center;gap:8px;min-width:0}.batch-input-row input{flex:1;min-width:0;width:0}.batch-lookup{flex:none;font-size:12px;padding:8px 10px;min-height:40px}.batch-preview{display:flex;gap:10px;align-items:center;padding:11px 12px;border:1px solid #344c65;border-radius:10px;background:#192b3c;min-width:0}.batch-preview[hidden]{display:none}.batch-preview img{width:46px;height:46px;object-fit:cover;border-radius:7px;flex:none}.batch-preview-body{min-width:0}.batch-preview-name{font-weight:600;font-size:12.5px;color:var(--text);overflow-wrap:anywhere;line-height:1.65}.batch-preview-meta{font-size:11px;color:var(--dim);line-height:1.7;overflow-wrap:anywhere}#batchRows .batch-row{align-content:start}
+.batch-row-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}.dbody .batch-include{display:flex;align-items:center;gap:6px;margin:0;font-size:11px;color:var(--dim);cursor:pointer;flex:none}.dbody .batch-include input{width:auto;min-height:0;margin:0}.batch-row.is-excluded .batch-input-row,.batch-row.is-excluded .batch-preview{opacity:.5}.batch-result{white-space:pre-wrap}
+.batch-group-control{display:flex;align-items:stretch;min-width:0}.batch-group-control #batchGroup{flex:1;min-width:0;width:0;border-radius:10px 0 0 10px;border-right:0}.batch-group-control #batchGroups{flex:none;width:44px;min-width:44px;font-size:0;padding:8px;border-radius:0 10px 10px 0;cursor:pointer}.batch-group-control #batchGroups option{font-size:13px}.batch-group-control input:focus-visible,.batch-group-control select:focus-visible{outline-offset:-2px}
+.batch-group-control{position:relative;display:block;border:1px solid var(--line);border-radius:10px;background:var(--panel2);cursor:text}.batch-group-control:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px #91a5ff22}.batch-group-control #batchGroup{display:block;width:100%;min-width:0;border:0;border-radius:10px;background:transparent;padding-right:42px;outline:none}.batch-group-control #batchGroup:focus-visible{outline:none}.batch-group-control #batchGroups{display:none}.batch-group-arrow{position:absolute;right:15px;top:8px;color:var(--dim);font-size:18px;pointer-events:none}#batchGroupOptions{position:absolute;top:calc(100% + 6px);left:-1px;right:-1px;z-index:30;max-height:220px;overflow:auto;background:#202d40;border:1px solid #4b5e7b;border-radius:10px;padding:5px;box-shadow:0 12px 28px #0007;cursor:default}#batchGroupOptions[hidden]{display:none}#batchGroupOptions:empty::before{content:'—';display:block;padding:8px 10px;color:var(--dim)}#batchGroupOptions button{display:block;width:100%;border:0;text-align:left;background:transparent;padding:10px 12px;border-radius:6px;color:var(--text);font-size:13px;white-space:normal;overflow-wrap:anywhere}#batchGroupOptions button:hover,#batchGroupOptions button.keyboard-active{background:#334565}#batchGroupOptions button[aria-selected=true]{color:#c7d3ff;background:#2b3b58}
+.onboarding{max-height:90dvh;overflow:auto}.onboarding label{display:block;margin-top:14px;color:var(--dim);font-size:12px}.onboarding select{margin-bottom:4px}.onboard-input-row{display:flex;gap:8px;margin-top:7px;align-items:center}.onboard-input-row input{flex:1;min-width:0;width:0}.onboard-input-row button{flex:none}.onboarding .batch-preview{margin-top:13px}.onboarding .batch-preview div{overflow-wrap:anywhere}#onboardCoach{position:fixed;right:22px;bottom:20px;z-index:80;width:370px;max-width:calc(100vw - 28px);max-height:65vh;overflow:auto;background:#1b293d;border:1px solid #647aa5;border-radius:16px;padding:20px;box-shadow:0 12px 45px #0007}#onboardCoach[hidden]{display:none}#onboardCoach .onboard-counter{margin:0 0 8px}#onboardCoach h2{font-size:17px;margin:0 0 10px}#onboardCoachBody{font-size:13px;line-height:1.85;margin:0}#onboardCoach .onboard-actions{margin-top:14px}.onboard-target{outline:2px solid var(--accent)!important;outline-offset:5px}@media(max-width:600px){#onboardCoach{right:14px;bottom:14px;padding:16px;width:340px;max-height:43vh}.onboarding{padding:22px!important}}
+body.onboard-active{padding-bottom:70vh}.onboard-target{scroll-margin-top:calc(var(--header-height,180px) + 24px)}
+#onboardCoach.onboard-coach-left{left:22px;right:auto}@media(max-width:600px){#onboardCoach{width:calc(100vw - 110px);min-width:220px}#onboardCoach.onboard-coach-left{left:14px}}
+#btnTutorial{white-space:nowrap;flex-shrink:0}@media(max-width:600px){.brandright{flex-wrap:wrap;gap:8px}body.onboard-active header .brandrow,body.onboard-active header .bar1{display:none}}
+/* Persistent tutorial attention cue: gold halo and directional marker. */
+body.onboard-active .onboard-target{outline:2px solid #ffd166!important;outline-offset:3px;scroll-margin-top:calc(var(--header-height,180px) + 88px)}
+#onboardBeacon{position:fixed;z-index:60;pointer-events:none;border:3px solid #ffd166;border-radius:12px;box-shadow:0 0 0 5px #ffd16624,0 0 26px #ffc44d66;animation:onboard-halo 1.8s ease-in-out infinite}
+#onboardBeacon[hidden]{display:none}
+#onboardBeaconLabel{position:absolute;top:-70px;left:0;width:max-content;max-width:calc(100vw - 32px);padding:7px 12px;border:1px solid #ffe7a1;border-radius:8px;background:#ffd166;color:#241b08;font-size:13px;font-weight:750;line-height:1.5;box-shadow:0 4px 16px #0006;overflow-wrap:anywhere}
+#onboardBeaconArrow{position:absolute;left:calc(50% - 16px);top:-39px;color:#ffe49b;font:700 32px/1 system-ui;text-shadow:0 2px 5px #000,0 0 12px #ffc44d;animation:onboard-point 1.8s ease-in-out infinite}
+#onboardBeacon.beacon-below #onboardBeaconArrow{top:calc(100% + 3px)}
+#onboardBeacon.beacon-below #onboardBeaconLabel{top:calc(100% + 39px)}
+@keyframes onboard-halo{0%,100%{box-shadow:0 0 0 4px #ffd16630,0 0 18px #ffc44d55}50%{box-shadow:0 0 0 10px #ffd16610,0 0 34px #ffc44d99}}
+@keyframes onboard-point{0%,100%{transform:translateY(-3px)}50%{transform:translateY(4px)}}
+@media(prefers-reduced-motion:reduce){#onboardBeacon,#onboardBeaconArrow{animation:none}}
+.onboard-translation-tip{margin:14px 0 0;padding:12px 14px;border:1px solid #b49349;border-left:4px solid #ffd166;border-radius:9px;background:#3a3120;color:#ffe5a0;font-size:13px;line-height:1.85;font-weight:600}.onboard-translation-tip[hidden]{display:none}
+#onboardCoach.onboard-complete{max-height:80vh}@media(max-width:600px){#onboardCoach.onboard-complete{width:calc(100vw - 28px)}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hwrap">
+    <div class="brandrow">
+      <span class="brandmark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2.5 21.5 12 12 21.5 2.5 12Z" stroke="currentColor" stroke-width="1.4"/><path d="m12 7 5 5-5 5-5-5Z" fill="currentColor"/><path d="M12 2.5V7M21.5 12H17M12 21.5V17M2.5 12H7" stroke="currentColor" stroke-width="1.4"/></svg></span>
+      <h1 id="appTitle">奇域评论收集器</h1>
+      <span class="brandsub">抓取千星奇域关卡评论区 · 只存在本地</span>
+      <span class="brandright">
+        <span class="status" role="status" aria-live="polite"><span class="dot" id="dot"></span><span id="statusText">就绪</span></span>
+        <span class="langbox" title="界面语言 / Interface language">
+          <span class="globe">🌐</span>
+          <label for="lang" id="langLabel">语言</label>
+          <select id="lang" title="界面语言 / Interface language"></select>
+        </span>
+      </span>
+    </div>
+
+    <div class="bar1">
+      <div class="gsel" id="gsel">
+        <button id="gselBtn" type="button" title="选择要查看的关卡">
+          <span id="gselLabel">（还没有游戏）</span><span class="arw">▾</span>
+        </button>
+        <div class="gselpanel" id="gselPanel" hidden></div>
+      </div>
+
+      <div class="btnset">
+        <button id="btnSync" class="primary" title="增量同步当前关卡：只找新评论，通常 1-2 秒">同步最新</button>
+        <button id="btnFull" title="全量重抓当前关卡：忽略本地数据重新并发抓一遍，评论多的约 20 秒">全量重抓</button>
+      </div>
+
+      <span class="vsep"></span>
+
+      <div class="btnset">
+        <button id="btnSyncGroup" title="整组增量：这个游戏在所有区服的条目一起同步">本组更新</button>
+        <button id="btnGroupFull" title="整组全量：慢一些，但能补齐增量漏掉的评论">本组全量</button>
+        <button id="btnGroup" title="修改分组：只改当前这条，或整组改名 / 拆散">改组</button>
+      </div>
+
+      <span class="vsep"></span>
+
+      <button id="btnAdd" class="primary" title="添加一个千星奇域关卡：可以按名字搜，也可以直接填关卡 ID 或粘贴链接">＋ 添加奇域</button>
+    </div>
+
+    <div class="tabs" id="fnTabs" role="tablist">
+      <button type="button" class="tab on" id="navComments" data-tab="list" role="tab" aria-selected="true" aria-controls="tab-list">评论</button>
+      <button type="button" class="tab" id="navNotes" data-tab="notes" role="tab" aria-selected="false" aria-controls="tab-notes">便签 <span class="n" id="noteBadge">0</span></button>
+      <button type="button" class="tab" id="navManage" data-tab="mgmt" role="tab" aria-selected="false" aria-controls="tab-mgmt">管理</button>
+    </div>
+  </div>
+</header>
+
+<div id="syncPanel"><div id="log"></div></div>
+
+<!-- ══════ 评论 ══════ -->
+<section id="tab-list" class="on" role="tabpanel" aria-labelledby="navComments">
+  <div class="toolbar">
+    <div class="filter-group filter-search">
+    <input type="search" id="q" placeholder="搜索内容 / 昵称 / IP…" style="min-width:200px">
+    <select id="sort">
+      <option value="floor_desc">时间：新 → 旧</option>
+      <option value="floor_asc">时间：旧 → 新</option>
+      <option value="like_desc">点赞：多 → 少</option>
+      <option value="len_desc">长度：长 → 短</option>
+    </select>
+    </div>
+    <div class="filter-group filter-moods">
+    <div class="chips" id="mood">
+      <button type="button" class="chip on" data-m="all" aria-pressed="true">全部</button>
+      <button type="button" class="chip good" data-m="good" aria-pressed="false">好评</button>
+      <button type="button" class="chip bad" data-m="bad" aria-pressed="false">差评</button>
+      <button type="button" class="chip dflt" data-m="df_good" aria-pressed="false">默认好评</button>
+      <button type="button" class="chip dflt" data-m="df_bad" aria-pressed="false">默认差评</button>
+      <button type="button" class="chip" data-m="written" aria-pressed="false">只看手写</button>
+    </div>
+<label id="hideDefaultWrap" class="muted" title="把官方代发的模板评论整体隐藏，只留真人手写的内容。约有一半评论是官方代发的。">
+      <input type="checkbox" id="hideDefault" style="vertical-align:-2px"> <span id="hideDefaultLabel">过滤默认</span>
+    </label>
+    </div>
+    <div class="filter-group filter-dates">
+    <span class="muted" id="dateLabel" title="按评论发布时间筛选，起止都含当天">时间</span>
+    <div class="date-range"><input type="date" id="dateFrom" title="起始日期（含当天）" style="width:140px">
+    <span class="muted">→</span>
+    <input type="date" id="dateTo" title="结束日期（含当天）" style="width:140px"></div>
+    <button id="dateClear" title="清除时间筛选">清除</button>
+    </div>
+    <div class="filter-group filter-actions">
+    <button id="csv" title="按当前筛选结果导出 CSV">导出</button>
+    <button id="btnHelp" title="各项功能说明">? 说明</button>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+  <div class="bar" id="bar"></div>
+  <div class="muted" id="filterCount" style="margin:-6px 0 10px;font-size:12.5px"></div>
+
+  <details id="tplPanel">
+    <summary id="statsSummary">模板与统计详情 <span class="muted" id="tplCount"></span></summary>
+    <div class="body">
+      <p class="muted" id="tplExplain" style="font-size:12.5px">
+        官方在你<strong>只点星级、不写字</strong>时会替你发一条固定文案。下面按重复次数排序列出所有高频相同内容——
+        次数异常高的就是模板。命中模板的评论会被标成「默认好评 / 默认差评」。
+        <br><strong>「模板阈值」</strong>是<strong>「一句话重复多少次才被认定为模板」</strong>的判定线：
+        调低更敏感（能抓小众模板，但可能误伤口头禅），调高更保守（可能漏掉模板）。
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;margin:10px 0">
+        <span class="muted" id="thrLabel">模板阈值</span>
+        <input type="number" id="thr" value="8" min="2" max="400" style="width:74px">
+        <span class="muted" id="thrHint"></span>
+      </div>
+      <table id="tplTable"><thead><tr><th id="tplThContent">内容</th><th class="num" id="tplThCount">次数</th><th class="num" id="tplThShare">占比</th><th id="tplThVerdict">判定</th></tr></thead><tbody></tbody></table>
+    </div>
+  </details>
+
+  <div id="list"></div>
+</section>
+
+<!-- ══════ 便签 ══════ -->
+<section id="tab-notes" role="tabpanel" aria-labelledby="navNotes">
+  <div class="toolbar">
+    <span class="muted" id="noteModeLabel">显示方式</span>
+    <select id="noteMode" title="切换便签的排列方式">
+      <option value="flat">默认（平铺）</option>
+      <option value="game">按游戏分组</option>
+      <option value="game+region">按游戏 + 区服</option>
+      <option value="region">只按区服</option>
+    </select>
+    <span class="vsep"></span>
+    <span class="muted" id="noteHint">看到值得记的评论，点它右上角的「☆ 便签」就能收进这里。</span>
+    <span class="vsep"></span>
+    <button id="noteExport">导出便签</button>
+  </div>
+  <div id="noteList"></div>
+</section>
+
+<!-- ══════ 管理 ══════ -->
+<section id="tab-mgmt" role="tabpanel" aria-labelledby="navManage">
+  <div class="mgmt">
+    <h3 id="mgmtTitle">已登记的游戏</h3>
+    <div class="mgmt-table-scroll">
+    <table id="mgmtTable">
+      <colgroup><col><col><col><col><col><col><col></colgroup>
+      <thead><tr><th>关卡</th><th>区服</th><th class="num">评论</th><th class="num">便签</th><th class="num">占用</th><th>上次同步</th><th>操作</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    </div>
+    <p class="muted" id="mgmtHint" style="font-size:12px;margin-bottom:0">
+      点分组标题行可展开 / 收起。<strong>改组</strong>改分组名；<strong>移除组</strong>把整组从列表去掉、数据留着；
+      <strong>删除组</strong>连整组的所有数据一起删，不可恢复。<br>
+      展开后每一行还有单条操作：<strong>仅移除登记</strong>只从列表去掉，<strong>彻底删除</strong>会连
+      <code>data/游戏名/</code> 下的评论和便签一起删掉。
+    </p>
+  </div>
+
+  <div class="mgmt">
+    <h3 id="dataPathTitle">数据位置</h3>
+    <p class="muted" id="dataPath" style="font-size:12.5px;margin:0 0 10px"></p>
+    <p class="muted" id="dataPara" style="font-size:12px;margin:0">
+      整个文件夹拷给别人就能直接用（对方需要装 Node.js）。要把这份工具交给别人、又不想带上你的评论数据，
+      就用上面的「彻底删除」清空，或直接删掉 <code>data</code> 目录。
+    </p>
+  </div>
+
+  <div class="mgmt">
+    <h3 id="otherTitle">其它</h3>
+    <div class="rowacts">
+      <button id="btnHelp2">各项功能说明</button>
+      <button id="btnStay" title="切换服务是否随网页关闭而退出">当前：关网页后自动退出（点一下改成常驻）</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ 添加游戏 ══════ -->
+<dialog class="dialog" id="dlgAdd">
+  <div class="dbody">
+    <div class="add-dialog-heading"><h2 id="addTitle">添加游戏</h2></div>
+
+    <!-- 顶部分服切换：国服 / 国际服 各有一套添加方式 -->
+    <div class="svswitch">
+      <button class="sv on" data-sv="cn" id="segCN">国服 · 米游社</button>
+      <button class="sv" data-sv="os" id="segOS">国际服 · HoYoLAB</button>
+    </div>
+
+    <!-- ────── 国服 ────── -->
+    <div class="svpanel" id="svCN">
+      <div class="fieldset">
+        <div class="flabel" id="addLblName">方式一 · 按名字搜</div>
+        <div class="frow">
+          <input id="inSearch" placeholder="关卡名字，例如：光影迷失之地">
+          <button id="btnSearch">搜索</button>
+        </div>
+        <div class="hint" id="addHint1">
+          米游社<strong>没有公开的关卡搜索接口</strong>，这里的做法是绕道：
+          搜帖子 → 从正文里抠出别人贴的分享链接 → 再换成真名。
+          所以<strong>只有「有人贴过分享链接」的关卡才搜得到</strong>，搜不到不代表关卡不存在 —— 那就用下面的方式二。
+        </div>
+        <div id="searchList" class="searchlist"></div>
+      </div>
+
+      <div class="fieldset">
+        <div class="flabel" id="addLblId">方式二 · 按关卡 ID 或链接 <span class="req" id="addLblIdReq">最可靠</span></div>
+        <div class="frow">
+          <input id="inInputCN" placeholder="关卡 ID（如 41384319276），或整条关卡链接">
+          <button id="btnLookupCN">查询</button>
+        </div>
+        <div class="rowsel">
+          <span class="muted" id="addRegionLabel">区服</span>
+          <select id="inRegionCN">
+            <option value="cn_gf01" id="optCN1">天空岛（官服）</option>
+            <option value="cn_qd01" id="optCN2">世界树（B服）</option>
+          </select>
+          <span class="muted" id="addPasteHint" style="font-size:12px">粘链接会自动识别</span>
+        </div>
+        <div class="hint" id="addHint2">
+          <strong>关卡 ID 怎么找</strong>：打开关卡页面，地址栏里 <code>level_id=</code>（网页版）
+          或 <code>id=</code>（游戏内分享链接）后面那串数字就是。
+          <br><strong>直接把那串数字粘进上面的框也能查</strong>，不一定要完整链接。
+        </div>
+      </div>
+    </div>
+
+    <!-- ────── 国际服 ────── -->
+    <div class="svpanel" id="svOS" style="display:none">
+      <div class="fieldset">
+        <div class="flabel" id="addLblStep1">第一步 · 选区服 <span class="req" id="addLblStep1Req">必须选对，选错查不到关卡</span></div>
+        <div class="regions">
+          <button class="rg" data-region="os_asia" data-i18n="regionShort.asia">亚服</button>
+          <button class="rg on" data-region="os_euro" data-i18n="regionShort.euro">欧服</button>
+          <button class="rg" data-region="os_usa" data-i18n="regionShort.usa">美服</button>
+          <button class="rg" data-region="os_cht" data-i18n="regionShort.cht">港澳台服</button>
+        </div>
+      </div>
+
+      <div class="fieldset">
+        <div class="flabel" id="addLblStep2">第二步 · 填关卡 ID 或链接 <span class="req" id="addLblStep2Req">最可靠</span></div>
+        <div class="frow">
+          <input id="inInputOS" placeholder="关卡 ID（如 33474712229），或整条 hoyolab 链接">
+          <button id="btnLookupOS">查询</button>
+        </div>
+        <div class="hint" id="addHint3">
+          在 <code>act.hoyolab.com</code> 的关卡页面把地址栏整条链接复制过来，区服会跟着链接自动对上。
+          <br><strong>也可以只填链接里 <code>level_id=</code> 后面那串数字</strong> —— 那就必须先把上面的区服选对。
+          <br><strong>国际服对国内 IP 有地区封锁，必须挂代理</strong> —— 见 <code>proxy.txt</code>
+          （没配的话脚本会自动探测本机端口）。
+          <br>国际服<strong>没有按名字搜</strong>（那条通道搜的是米游社帖子，国际服走不通）。
+        </div>
+      </div>
+    </div>
+
+    <div class="preview" id="preview">
+      <img id="pvImg" alt="">
+      <div><div class="nm" id="pvName"></div><div class="sub" id="pvSub"></div></div>
+    </div>
+
+    <label><span id="addGroupLabel">分组</span> <span class="opt" id="addGroupHint1">同一游戏在各服归到一组 —— 选已有的组，或新建</span></label>
+    <select id="inGroupSel"></select>
+    <input id="inGroupNew" placeholder="新分组名（会新建一组）" style="display:none;margin-top:8px">
+    <div class="grouptip" id="pvGroup"></div>
+
+    <label><span id="addNameLabel">游戏名字</span> <span class="opt" id="addNameOpt">可留空 —— 会自动用关卡名</span></label>
+    <input id="inName" placeholder="留空即可">
+
+    <div class="msg" id="addMsg"></div>
+    <div class="dacts">
+      <button id="addCancel">取消</button>
+      <button id="addOk" class="primary">添加并同步</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ══════ 改组 ══════ -->
+<dialog class="dialog" id="dlgGroup">
+  <div class="dbody">
+    <h2 id="gpTitle">修改分组</h2>
+    <div class="grouptip" id="gpInfo"></div>
+
+    <label><span id="gpGroupLabel">分组</span> <span class="opt" id="addGroupHint2">从已有分组里选，或新建一个</span></label>
+    <select id="gpSelect"></select>
+    <input id="gpNew" placeholder="新分组名（会新建一组）" style="display:none;margin-top:8px">
+
+    <div class="msg" id="gpMsg"></div>
+    <div class="dacts">
+      <button id="gpCancel">取消</button>
+      <button id="gpDissolve" class="danger" title="把这个组拆开，每条各自成组">拆散整组</button>
+      <button id="gpOne" title="只把这一条移过去，同组的其他条不动">只改这一条</button>
+      <button id="gpAll" class="primary" title="整组改名；目标名已存在就等于合并">改整组</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ══════ 说明 ══════ -->
+<dialog class="dialog" id="dlgHelp">
+  <div class="dbody">
+    <h2 id="helpTitle">各项功能说明</h2>
+
+    <h3 id="helpx1">评级：好评 / 差评</h3>
+    <p id="helpx2">直接用接口的 <code>is_recommend</code> 字段，<strong>那是游戏里的好评/差评本身</strong>，不是猜的。
+    千星奇域只有好评和差评两个选项，<strong>没有中评</strong>。</p>
+    <p class="muted" id="helpx3">佐证：官方默认好评模板 337 条全部 <code>is_recommend=true</code>；默认差评模板 56 条里 55 条是
+    <code>false</code>；关卡接口返回的官方好评率 84.2% 与本地算出的 695/825 完全吻合。</p>
+
+    <h3 id="helpx4">默认评论是什么</h3>
+    <p id="helpx5">你在关卡里<strong>只点星级、不写字</strong>时，官方会替你把一条固定文案发出去，所以列表里有大量一模一样的内容：</p>
+    <p id="helpx6"><code>非常优秀的奇域，推荐大家游玩~</code>（中文·好评）<br>
+       <code>奇域仍有待打磨，期待作者的更新~</code>（中文·差评）</p>
+    <p id="helpx7">这两条加上繁体变体，占了总量的<strong>约一半</strong>。它们不代表真实意见，留着会把统计带偏。</p>
+    <p id="helpx8"><strong>每个语言有各自的一套文案</strong>（米哈游支持 15 种语言）。工具目前内置了
+    <strong>中 / 英 / 日 / 俄 / 西 / 葡</strong> 七种语言的原文，比如：</p>
+    <p id="helpx9"><code>An outstanding Wonderland! Highly recommended for everyone to try~</code>（英）<br>
+       <code>Потрясающий предел! Настоятельно рекомендуем всем!</code>（俄）<br>
+       <code>とても素晴らしい幻境ですので、皆さんにもオススメです～</code>（日）</p>
+    <p id="helpx10">其余语言（韩 / 法 / 德 / 泰 / 越 / 印尼 / 土 / 意）没有样本可验证，所以<strong>不硬编码</strong>，
+    交给下面的「模板阈值」自动发现。</p>
+
+    <h3 id="helpx11">「过滤默认」有什么用</h3>
+    <p id="helpx12">勾上之后，上面那些官方代发的模板评论<strong>整体隐藏</strong>，你看到的就是真人手写的内容。
+    想看真实评价、想找问题和建议时，就该勾上它。</p>
+    <p id="helpx13">也可以不勾，改用「默认好评 / 默认差评 / 只看手写」单独筛某一类。</p>
+
+    <h3 id="helpx14">「模板阈值」有什么用</h3>
+    <p id="helpx15">它是<strong>「一句话重复多少次才被认定为官方模板」的判定线</strong>，默认 8。
+    同一句话（去掉标点和 <code>~</code> 后）出现 ≥ 8 次，并且
+    <strong>这一段的官方评级高度一致（≥90%）</strong>、<strong>长度够（≥12 字）</strong>，
+    就自动算模板 —— 这样没硬编码的语言也能被认出来。</p>
+    <ul>
+      <li id="helpx16">这样除了匹配已知文案，还能<strong>自动发现官方其它语言或以后换的新文案</strong>。</li>
+      <li id="helpx17">调<strong>低</strong>更敏感：评论少的国际服关卡（可能只有几条）建议调到 2~3，否则发现不了模板。</li>
+      <li id="helpx18">调<strong>高</strong>更保守：只认超大面积的重复，漏掉的模板会被当普通评论统计。</li>
+      <li id="helpx19">改完<strong>立刻重算</strong>，不用重新抓数据。</li>
+    </ul>
+
+    <h3 id="helpx20">便签</h3>
+    <p id="helpx21">评论卡片右上角的 <strong>☆</strong> 点一下就收进「便签」页。可以附一段自己的备注，
+    点「定位」会跳回评论列表并高亮那一条。便签连同<strong>评论快照</strong>一起存下来——
+    就算原评论被删了，便签里照样看得到内容。</p>
+
+    <h3 id="helpx22">同步快不快</h3>
+    <ul>
+      <li id="helpx23"><strong>同步最新</strong>：增量，只找新的。通常 <strong>1-2 秒</strong>。</li>
+      <li id="helpx24"><strong>全量重抓</strong>：6 条楼层分片 + 热门序并发跑。7377 条的关卡约 <strong>20 秒</strong>，
+          覆盖率 100%。（早期版本顺序爬要 4 分钟以上。）</li>
+    </ul>
+
+    <h3 id="helpx25">楼中楼（评论下面的回复）</h3>
+    <p id="helpx26">评论底下的回复会一并抓到并显示，但<strong>可能不全</strong>。原因是接口本身：</p>
+    <ul>
+      <li id="helpx27"><strong>时间序</strong>返回的 <code>sub_replies</code> 是完整的，但时间序会跳过一部分楼层；</li>
+      <li id="helpx28"><strong>热门序</strong>能捞到被跳过的那些楼层，但它给的子回复只是<strong>预览</strong>——
+          实测某一页 120 条评论声明了 90 条子回复，内联只返回 8 条。</li>
+    </ul>
+    <p id="helpx29">我试过专门的 <code>sub_replies</code> 接口：参数能通过校验（不再报「参数无效」），
+    但服务端一律返回 <code>fatal error</code>，可能要求登录态，也可能还差一个挖不到的字段。</p>
+    <p class="muted" id="helpx30">收集器已经做到：同一条评论如果从不同排序各返回一次，<strong>取子回复最全的那一份</strong>。
+    剩下的缺口是接口限制，不是可以绕过的。</p>
+
+    <h3 id="helpx31">时间区间筛选</h3>
+    <p id="helpx32">顶部两个日期框，起止都<strong>含当天</strong>。可以只填一头（只要起始、或只要结束）。
+    筛选生效后，统计下方会显示「筛选出 N 条」和当前区间。「清除」按钮恢复全部。</p>
+
+    <h3 id="helpx33">关掉网页会怎样</h3>
+    <p id="helpx34">关掉网页 3 秒后服务会自动退出，那个黑窗口<strong>也会跟着自己关掉</strong>。
+    只有服务真的报错时窗口才会停住让你看信息。想常驻就在「管理」页切换一下。</p>
+
+    <div class="dacts"><button id="helpClose" class="primary">知道了</button></div>
+  </div>
+</dialog>
+
+<script src="/i18n.js"></script>
+<script src="/note-store.js"></script>
+<script>
+'use strict'
+
+/* ═══════════ 默认评论模板 ═══════════
+   玩家只打星不写字时，官方会代发一段固定文案。**每个语言一套**，所以必须多语言匹配。
+   下面的原文全部来自实际抓到的评论数据（不是猜的），已验证命中、无误判：
+     英：An outstanding Wonderland! Highly recommended for everyone to try~
+         The Wonderland still needs some polishing. Looking forward to the author's updates~
+     日：とても素晴らしい幻境ですので、皆さんにもオススメです～
+     俄：Потрясающий предел! Настоятельно рекомендуем всем!
+     西：¡Un edén excelente, recomendado para todos!
+     葡：Um Arcanum incrível! Extremamente recomendado que todos explorem~
+     韩：정말 훌륭한 별세계네요, 꼭 플레이해 보세요~
+     法：Un niveau exceptionnel ! À découvrir absolument !
+     德：Ein ausgezeichnetes Wonderland! Allen wärmstens empfohlen!
+     意：Un Mirabilia eccezionale! Altamente consigliato a tutti!
+     印尼：Wonderland yang sangat bagus, sangat direkomendasikan~
+   米哈游支持 15 种语言，剩下没有样本的（泰/越/土）不硬编码，
+   由「频次发现」兜底（同一句话重复 ≥ 阈值 且评级高度一致就算模板）。
+   想继续补全：多同步几个欧服/亚服的热门关卡，然后跑
+     node collect.js templates
+   它会按语言列出「重复出现、评级一致」的句子，把结果发出来就能加进这张表。
+   注意必须用正则：繁体/全半角/标点变体精确匹配会漏。 */
+const KNOWN_TEMPLATES = [
+  { re: /(优秀|優秀)的奇域[\s\S]{0,4}(推荐|推薦)大家(游玩|遊玩)/, kind: 'df_good', name: '默认好评（中）' },
+  // 中文差评：奇域仍有待打磨…期待作者的更新。
+  //   注意别把「打磨」写死 —— 实测还有「奇域仍有待改良，期待作者的更新」这种变体。
+  { re: /奇域仍有待[\s\S]{0,6}期待作者[\s\S]{0,4}更新/, kind: 'df_bad', name: '默认差评（中）' },
+  { re: /outstanding\s*Wonderland[\s\S]{0,60}(Highly|recommended)/i, kind: 'df_good', name: '默认好评（英）' },
+  { re: /Wonderland\s*still\s*needs\s*some\s*polishing/i, kind: 'df_bad', name: '默认差评（英）' },
+  { re: /素晴らしい幻境[\s\S]{0,30}オススメ/, kind: 'df_good', name: '默认好评（日）' },
+  { re: /Потрясающий\s*предел[\s\S]{0,40}рекоменд/i, kind: 'df_good', name: '默认好评（俄）' },
+  { re: /ed[eé]n\s*excelente[\s\S]{0,30}recomend/i, kind: 'df_good', name: '默认好评（西）' },
+  { re: /Arcanum\s*incr[ií]vel[\s\S]{0,50}recomend/i, kind: 'df_good', name: '默认好评（葡）' },
+  // 韩语好评：정말 훌륭한 별세계네요, 꼭 플레이해 보세요~
+  { re: /훌륭한\s*별세계[\s\S]{0,30}플레이/, kind: 'df_good', name: '默认好评（韩）' },
+  // 俄语差评：Предел нуждается в дополнительном улучшении. Ждём ваших обновлений!
+  { re: /Предел\s*нуждается[\s\S]{0,40}обновлен/i, kind: 'df_bad', name: '默认差评（俄）' },
+  // 法语好评：Un niveau exceptionnel ! À découvrir absolument !
+  { re: /niveau\s*exceptionnel[\s\S]{0,40}(découvrir|absolument)/i, kind: 'df_good', name: '默认好评（法）' },
+  // 德语好评：Ein ausgezeichnetes Wonderland! Allen wärmstens empfohlen!
+  { re: /ausgezeichnetes\s*Wonderland[\s\S]{0,40}empfohlen/i, kind: 'df_good', name: '默认好评（德）' },
+  // 意大利语好评：Un Mirabilia eccezionale! Altamente consigliato a tutti!
+  { re: /Mirabilia\s*eccezionale[\s\S]{0,40}consigliat/i, kind: 'df_good', name: '默认好评（意）' },
+  // 印尼语好评：Wonderland yang sangat bagus, sangat direkomendasikan~
+  { re: /Wonderland\s*yang\s*sangat[\s\S]{0,40}direkomendasikan/i, kind: 'df_good', name: '默认好评（印尼）' },
+  // 泰语好评：เป็นแดนอัศจรรย์ที่ยอดเยี่ยมมาก แนะนำให้ทุกคนมาลองเล่นดูนะ~
+  { re: /แดนอัศจรรย์[\s\S]{0,40}แนะนำ/, kind: 'df_good', name: '默认好评（泰）' },
+  // 越南语好评：Kỳ Vực rất xuất sắc, đề xuất mọi người chơi thử!
+  { re: /Kỳ\s*Vực[\s\S]{0,40}(đề|chơi)/i, kind: 'df_good', name: '默认好评（越）' },
+  // 土耳其语好评：Olağanüstü bir Diyar! Herkesin denemesini tavsiye ederim!
+  { re: /Olağanüstü\s*bir\s*Diyar/i, kind: 'df_good', name: '默认好评（土）' },
+  // 西班牙语差评：¡El edén aún necesita pulirse, se espera con ansias la actualización del creador!
+  { re: /ed[eé]n\s*a[uú]n\s*necesita[\s\S]{0,40}(pulirse|actualizaci)/i, kind: 'df_bad', name: '默认差评（西）' },
+  // 葡萄牙语差评：O Arcanum ainda precisa de mais aperfeiçoamentos. Aguardando ansiosamente pelas atualizações do autor~
+  { re: /Arcanum\s*ainda\s*precisa[\s\S]{0,60}aperfei/i, kind: 'df_bad', name: '默认差评（葡）' },
+  // 日语差评：まだ成長の余地があります！制作者のバージョンアップを楽しみにしています～
+  { re: /成長の余地[\s\S]{0,40}(バージョンアップ|楽しみ)/, kind: 'df_bad', name: '默认差评（日）' },
+  // 韩语差评：별세계에는 아직 다듬어야 할 부분이 있네요. 작가님의 업데이트를 기대하고 있을게요~
+  { re: /별세계[\s\S]{0,20}다듬어야/, kind: 'df_bad', name: '默认差评（韩）' },
+  // 法语差评：Le niveau a encore besoin d'être peaufiné. J'attends avec impatience les mises à jour ~
+  { re: /niveau\s*a\s*encore\s*besoin[\s\S]{0,50}impatience/i, kind: 'df_bad', name: '默认差评（法）' },
+  // 德语差评：Das Wonderland braucht noch etwas Feinschliff. Wir freuen uns auf Aktualisierungen von Autoren!
+  { re: /Wonderland\s*braucht\s*noch[\s\S]{0,40}Feinschliff/i, kind: 'df_bad', name: '默认差评（德）' },
+  // 意大利语差评：Il Mirabilia ha ancora bisogno di qualche miglioramento. Non vedo l'ora di vedere gli aggiornamenti!
+  { re: /Mirabilia\s*ha\s*ancora\s*bisogno/i, kind: 'df_bad', name: '默认差评（意）' },
+  // 印尼语差评：Wonderland masih perlu penyempurnaan, menantikan update dari Kreator~
+  { re: /Wonderland\s*masih\s*perlu[\s\S]{0,40}penyempurnaan/i, kind: 'df_bad', name: '默认差评（印尼）' },
+  // 泰语差评：แดนอัศจรรย์ยังต้องปรับแต่งอีก รอการอัปเดตจากผู้สร้างอยู่นะ~
+  { re: /แดนอัศจรรย์[\s\S]{0,30}ปรับแต่ง/, kind: 'df_bad', name: '默认差评（泰）' },
+  // 越南语差评：Kỳ Vực vẫn cần cải thiện, mong chờ cập nhật của tác giả!
+  { re: /Kỳ\s*Vực[\s\S]{0,20}cải\s*thiện/i, kind: 'df_bad', name: '默认差评（越）' },
+  // 土耳其语差评：Diyarın biraz daha düzenlemeye ihtiyacı var. Üreticinin güncellemelerini merakla bekliyorum!
+  { re: /düzenlemeye\s*ihtiyac/i, kind: 'df_bad', name: '默认差评（土）' },
+]
+const norm = s => s.replace(/[~～\s]/g, '').replace(/[，。！!？?、,.]/g, '')
+
+/* 每个模板的「官方原文」（规范化后）。用途：区分
+     · 纯默认   —— 玩家只打了星，文案和官方一字不差
+     · 默认+补充 —— 官方那句子开头，后面玩家又自己补了话
+   没列出来的语言按旧逻辑一律当纯默认（宁可少判也不错判）。 */
+const TPL_EXACT = {
+  '默认好评（中）': ['非常优秀的奇域，推荐大家游玩~', '非常優秀的奇域，推薦大家遊玩~'],
+  '默认差评（中）': ['奇域仍有待打磨，期待作者的更新~', '奇域仍有待改良，期待作者的更新~'],
+  '默认好评（英）': ['An outstanding Wonderland! Highly recommended for everyone to try~'],
+  '默认差评（英）': ["The Wonderland still needs some polishing. Looking forward to the author's updates~"],
+  '默认好评（日）': ['とても素晴らしい幻境ですので、皆さんにもオススメです～'],
+  '默认差评（日）': ['まだ成長の余地があります！制作者のバージョンアップを楽しみにしています～'],
+  '默认好评（俄）': ['Потрясающий предел! Настоятельно рекомендуем всем!'],
+  '默认差评（俄）': ['Предел нуждается в дополнительном улучшении. Ждём ваших обновлений!'],
+  '默认好评（西）': ['¡Un edén excelente, recomendado para todos!'],
+  '默认差评（西）': ['¡El edén aún necesita pulirse, se espera con ansias la actualización del creador!'],
+  '默认好评（葡）': ['Um Arcanum incrível! Extremamente recomendado que todos explorem~'],
+  '默认差评（葡）': ['O Arcanum ainda precisa de mais aperfeiçoamentos. Aguardando ansiosamente pelas atualizações do autor~'],
+  '默认好评（韩）': ['정말 훌륭한 별세계네요, 꼭 플레이해 보세요~'],
+  '默认差评（韩）': ['별세계에는 아직 다듬어야 할 부분이 있네요. 작가님의 업데이트를 기대하고 있을게요~'],
+  '默认好评（法）': ['Un niveau exceptionnel ! À découvrir absolument !'],
+  '默认差评（法）': ["Le niveau a encore besoin d'être peaufiné. J'attends avec impatience les mises à jour ~"],
+  '默认好评（德）': ['Ein ausgezeichnetes Wonderland! Allen wärmstens empfohlen!'],
+  '默认差评（德）': ['Das Wonderland braucht noch etwas Feinschliff. Wir freuen uns auf Aktualisierungen von Autoren!'],
+  '默认好评（意）': ['Un Mirabilia eccezionale! Altamente consigliato a tutti!'],
+  '默认差评（意）': ["Il Mirabilia ha ancora bisogno di qualche miglioramento. Non vedo l'ora di vedere gli aggiornamenti!"],
+  '默认好评（印尼）': ['Wonderland yang sangat bagus, sangat direkomendasikan~'],
+  '默认差评（印尼）': ['Wonderland masih perlu penyempurnaan, menantikan update dari Kreator~'],
+  '默认好评（泰）': ['เป็นแดนอัศจรรย์ที่ยอดเยี่ยมมาก แนะนำให้ทุกคนมาลองเล่นดูนะ~'],
+  '默认差评（泰）': ['แดนอัศจรรย์ยังต้องปรับแต่งอีก รอการอัปเดตจากผู้สร้างอยู่นะ~'],
+  '默认好评（越）': ['Kỳ Vực rất xuất sắc, đề xuất mọi người chơi thử!'],
+  '默认差评（越）': ['Kỳ Vực vẫn cần cải thiện, mong chờ cập nhật của tác giả!'],
+  '默认好评（土）': ['Olağanüstü bir Diyar! Herkesin denemesini tavsiye ederim!'],
+  '默认差评（土）': ['Diyarın biraz daha düzenlemeye ihtiyacı var. Üreticinin güncellemelerini merakla bekliyorum!'],
+}
+for (const t of KNOWN_TEMPLATES) t._exact = (TPL_EXACT[t.name] || []).map(norm)
+
+// 归类：返回 { kind, name, mixed } 或 null。
+// 「默认+补充」用 df_mixed —— 它【不该】被「过滤默认」藏起来，
+// 因为后面那半句是玩家真的写了的意见。
+function classifyKnown(k) {
+  const t = KNOWN_TEMPLATES.find((x) => x.re.test(k))
+  if (!t) return null
+  const pure = !t._exact.length || t._exact.includes(k)
+  return { kind: pure ? t.kind : 'df_mixed', name: t.name, mixed: !pure }
+}
+
+/* 好评/差评直接用接口的 is_recommend 字段 —— 那是官方评级本身，不需要猜测。 */
+const state = {
+  games: [], gameIdx: -1, data: null, notes: [], noteKeys: new Set(),
+  tab: 'list', mood: 'all', sort: 'floor_desc', q: '', hideDefault: false, thr: 8, shown: 200,
+  dateFrom: '', dateTo: '',
+  mgmtOpen: new Set(),      // 管理页展开了哪些分组
+  selectOpen: new Set(),    // 关卡下拉里展开了哪些分组
+  allNotes: [],             // 所有游戏的便签（便签页跨游戏显示）
+  noteMode: 'flat',         // 便签显示方式：flat / game / game+region / region
+  noteOpen: new Set(),      // 便签页展开了哪些分组
+  lang: 'zh-cn',            // 界面语言（见 i18n.js）
+  autoClose: true,          // 服务是否随网页关闭而退出（常驻开关）
+  loadSeq: 0,               // 请求序号：切关卡时 +1，用来丢弃「过期的慢响应」
+}
+const $ = id => document.getElementById(id)
+
+const noteStore = window.QXCreateNoteStore({
+  post: async (url, body) => { const result = await postJson(url, body); if (!result.ok) throw new Error(lookupErrorText(result)); return result },
+  onError: error => setStatus('err', t('error.noteSave') + ': ' + error.message),
+})
+let noteLoadSeq = 0
+let gameLoadSeq = 0
+
+/* ═══════════ 界面多语言 ═══════════
+   译文集中在 i18n.js，这里只负责取词和贴到元素上。
+   只替换 QX_TARGETS 里列出的界面元素，评论正文/便签内容永远不动。 */
+function t(key) {
+  const all = window.QX_I18N || {}
+  const cur = all[state.lang] || {}
+  const base = all['zh-cn'] || {}
+  return cur[key] != null ? cur[key] : (base[key] != null ? base[key] : key)
+}
+function normalizeLevelInput(input) {
+  let value = String(input || '').normalize('NFKC').trim()
+  for (let i = 0; i < 2; i++) { try { const decoded = decodeURIComponent(value); if (decoded === value) break; value = decoded } catch { break } }
+  return value
+}
+function lookupErrorText(info) {
+  if (info && info.errorKey) return t(info.errorKey)
+  const code = info && info.code
+  if (code === 'mismatch') return t('batch.mismatch')
+  if (['invalid','notFound','business','proxyMissing','proxyFailed','network'].includes(code)) {
+    return t('lookup.' + code) + (info.retcode !== undefined ? ' (' + info.retcode + ')' : '')
+  }
+  return (info && info.error) || t('lookup.network')
+}
+// 写入界面文字，同时保住元素里的子元素（比如「便签 3」的角标）。
+// 做法是【先删掉所有文本节点，再插一个新的】——不管元素之前是什么状态
+// （哪怕被旧版本追加过多层文字），切一次语言就自愈成单层，绝不会越切越多。
+function setLabel(el, text) {
+  if (!el) return
+  for (const n of [...el.childNodes]) if (n.nodeType === 3) el.removeChild(n)
+  if (!el.children.length) { el.textContent = text; return }
+  el.insertBefore(document.createTextNode(text + ' '), el.firstChild)   // 有角标时补空格
+}
+const REGION_KEY = {
+  cn_gf01: 'regionShort.cn', cn_qd01: 'regionShort.cnB',
+  os_asia: 'regionShort.asia', os_euro: 'regionShort.euro',
+  os_usa: 'regionShort.usa', os_cht: 'regionShort.cht',
+}
+// 区服名走译文；没有对应键时退回服务端给的中文名
+function regionName(code, fallback) {
+  const key = REGION_KEY[String(code || '')]
+  return key ? t(key) : (fallback || String(code || ''))
+}
+// 便签里的「来自哪关 · 哪服」，两边都要能被翻译
+function noteGameName(n) { return n._levelName || n.game || n.gameName || '' }
+function noteRegionName(n) { return regionName(n._region, n._regionLabel || n.regionLabel || n._region || '') }
+
+let dataLocationInfo = null
+function renderDataLocation() {
+  const target = $('dataPath')
+  if (!target || !dataLocationInfo) return
+  target.textContent = ''
+  const life = dataLocationInfo
+  for (const text of [
+    t('data.toolDir') + (life.root || ''),
+    t('data.dataDir') + (life.dataDir || 'data') + '\\<game>\\',
+    t('data.port').replace('{port}', life.port || ''),
+  ]) {
+    const line = document.createElement('div')
+    line.textContent = text
+    target.append(line)
+  }
+}
+function applyLang() {
+  for (const [sel, key, attr] of (window.QX_TARGETS || [])) {
+    const el = document.querySelector(sel)
+    if (!el) continue
+    const v = t(key)
+    if (attr === 'placeholder') el.placeholder = v
+    else if (attr === 'title') el.title = v
+    // 整段替换：段落里夹了 <strong>/<code> 时，只换第一个文本节点会中英混排
+    else if (attr === 'text') el.textContent = v
+    else setLabel(el, v)
+  }
+  document.documentElement.lang = state.lang
+  renderDataLocation()
+}
+function guessLang(tag) {
+  const list = (window.QX_LANGS || []).map((x) => x[0])
+  const n = String(tag || '').toLowerCase()
+  if (list.includes(n)) return n
+  const short = n.split('-')[0]
+  const hit = list.find((c) => c.split('-')[0] === short)
+  return hit || 'zh-cn'
+}
+// 常驻开关的文字跟着界面语言走
+function renderStay() {
+  const el = $('btnStay')
+  if (el) el.textContent = t(state.autoClose ? 'btn.stayAuto' : 'btn.stayAlways')
+}
+function initLang() {
+  const sel = $('lang')
+  if (!sel) return
+  for (const [code, name] of (window.QX_LANGS || [])) {
+    const o = document.createElement('option')
+    o.value = code
+    o.textContent = name
+    sel.append(o)
+  }
+  let saved = ''
+  try { saved = localStorage.getItem('qx-lang') || '' } catch { /* 隐私模式忽略 */ }
+  const all = window.QX_I18N || {}
+  // 默认简体中文：这是中文工具，首次打开用中文最可预期；
+  // 想换语言的用户自己在下拉里选，选过就记住了。
+  state.lang = all[saved] ? saved : 'zh-cn'
+  sel.value = state.lang
+  sel.onchange = () => {
+    state.lang = sel.value
+    try { localStorage.setItem('qx-lang', state.lang) } catch { /* 忽略 */ }
+    applyLang()
+    renderAll(true)
+    renderNotes()
+    renderMgmt()
+    // 右上角的状态文字也要跟着换；同步进行中就别打断
+    if (!$('btnSync').disabled) setStatus('', t('status.ready'))
+    renderStay()      // 常驻开关按钮的文字
+    // 关卡下拉里的「区服 · N 条」也要跟着语言重刷
+    syncGameSelectLabel(); renderGameSelectPanel(); updateGroupBtn()
+    if (dpEl && !dpEl.hidden) dpRender()   // 日历开着就按新语言重画
+    repaintLog()                            // 已经打出来的同步日志也按新语言重画
+  }
+  applyLang()
+}
+const esc = v => (v == null ? '' : String(v))
+
+// 区服的固定显示顺序（下拉和管理页都按这个排）
+const REGION_ORDER = ['cn_gf01', 'cn_qd01', 'os_asia', 'os_euro', 'os_usa', 'os_cht']
+function regionRank(r) {
+  const i = REGION_ORDER.indexOf(String(r))
+  return i < 0 ? 99 : i
+}
+
+function buildData(raw) {
+  const replies = (raw.replies || []).slice()
+  const freq = new Map()
+  const rate = new Map()      // 同一段文字下，官方评级（is_recommend）的分布
+  for (const r of replies) {
+    const k = norm((r.content || '').trim())
+    freq.set(k, (freq.get(k) || 0) + 1)
+    const e = rate.get(k) || { good: 0, bad: 0 }
+    if (r.is_recommend === false) e.bad += 1; else e.good += 1
+    rate.set(k, e)
+  }
+  const rawOf = new Map()        // 归一化原文 -> 原始写法（表格里显示人话）
+  for (const r of replies) {
+    const k = norm((r.content || '').trim())
+    if (k && !rawOf.has(k)) rawOf.set(k, (r.content || '').trim())
+  }
+  const templates = []
+  const variantKind = new Map()   // 归一化原文 -> 判定，给逐条分类用
+
+  // 【设计】默认评论不分语言，全部归成两大类：好评 / 差评。
+  //   · 表格里最多两行：默认好评、默认差评
+  //   · 「内容」列显示这一类模板在【当前界面语言】下的官方文案
+  //     （英文界面就显示英文那句，日文界面显示日文那句）
+  //   · 「默认文案 + 玩家自己补的话」不算默认评论，按手写处理，不进这张表
+  const byKind = new Map()        // 'df_good' | 'df_bad' -> 条数
+  const bump = (kind, n) => byKind.set(kind, (byKind.get(kind) || 0) + n)
+
+  for (const [k, n] of freq) {
+    if (!k) continue
+    const c = classifyKnown(k)
+    if (c) {
+      variantKind.set(k, c.kind)
+      if (c.mixed) continue          // 默认文案 + 玩家补充 → 当手写
+      bump(c.kind, n)
+      continue
+    }
+    // 没收录的模板：频次发现兜底（语言无关）
+    if (n < state.thr) continue
+    const rr = rate.get(k) || { good: 0, bad: 0 }
+    const dom = Math.max(rr.good, rr.bad) / n
+    const kind = (k.length >= 12 && dom >= 0.9) ? (rr.good >= rr.bad ? 'df_good' : 'df_bad') : null
+    if (kind) { variantKind.set(k, kind); bump(kind, n) }
+    else templates.push({ text: rawOf.get(k) || k, count: n, kind: null, source: '频次' })
+  }
+
+  for (const [kind, n] of byKind) templates.push({ count: n, kind, source: '已知模板' })
+  templates.sort((a, b) => b.count - a.count)
+  const tplMap = variantKind
+  for (const r of replies) {
+    const text = (r.content || '').trim()
+    r._text = text
+    r._norm = norm(text)
+    let k = tplMap.get(r._norm) || null
+    if (!k) { const kn = classifyKnown(r._norm); if (kn) k = kn.kind }
+    r._tpl = k
+    r._rating = r.is_recommend === false ? 'bad' : 'good'
+    r._like = +((r.reply_stat && r.reply_stat.like_count) || 0)
+    r._subs = r.sub_replies || []
+    r._key = String(r.reply_id || r.floor_id)
+  }
+  return { meta: raw, replies, templates }
+}
+
+function fmtTime(ts, seconds = false) {
+  if (ts == null || ts === '') return ''
+  const numeric = typeof ts === 'number' || /^-?\d+(?:\.\d+)?$/.test(String(ts))
+  const value = numeric ? (Math.abs(Number(ts)) < 1e12 ? Number(ts) * 1000 : Number(ts)) : ts
+  const d = new Date(value), p = n => String(n).padStart(2, '0')
+  if (!Number.isFinite(d.getTime())) return ''
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}` + (seconds ? ':' + p(d.getSeconds()) : '')
+}
+function fmtBytes(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB' }
+
+/* ═══════════ 筛选与渲染 ═══════════ */
+function matchMood(r) {
+  switch (state.mood) {
+    case 'all': return true
+    case 'good': return r._rating === 'good'
+    case 'bad': return r._rating === 'bad'
+    case 'df_good': return r._tpl === 'df_good'
+    case 'df_bad': return r._tpl === 'df_bad'
+      case 'written': return !r._tpl || r._tpl === 'df_mixed'   // 默认+补充 也算手写
+    default: return true
+  }
+}
+function filtered() {
+  const g = state.data
+  if (!g) return []
+  const q = state.q.trim().toLowerCase()
+  // 时间区间：created_at 是 Unix 秒，起止都按本地时区含当天
+  const fromMs = state.dateFrom ? new Date(state.dateFrom + 'T00:00:00').getTime() : null
+  const toMs = state.dateTo ? new Date(state.dateTo + 'T23:59:59.999').getTime() : null
+  const list = g.replies.filter(r => {
+      // 只过滤【纯默认】；「默认+补充」里有玩家自己写的意见，藏掉就丢信息了
+      if (state.hideDefault && r._tpl && r._tpl !== 'df_mixed') return false
+    if (!matchMood(r)) return false
+    if (fromMs || toMs) {
+      const ts = (r.created_at || 0) * 1000
+      if (fromMs && ts < fromMs) return false
+      if (toMs && ts > toMs) return false
+    }
+    if (q) {
+      // 提示里写了「楼层」，就得真搜楼层：数字直接按楼层号命中
+      const hay = (r._text + ' ' + ((r.user_info && r.user_info.nickname) || '') + ' ' + (r.client_ip || '')
+        + ' ' + String(r.floor_id || '')).toLowerCase()
+      if (!hay.includes(q)) return false
+    }
+    return true
+  })
+  const s = state.sort
+  list.sort((a, b) => {
+    if (s === 'floor_desc') return (b.floor_id || 0) - (a.floor_id || 0)
+    if (s === 'floor_asc') return (a.floor_id || 0) - (b.floor_id || 0)
+    if (s === 'like_desc') return b._like - a._like || (b.floor_id || 0) - (a.floor_id || 0)
+    if (s === 'len_desc') return b._text.length - a._text.length
+    return 0
+  })
+  return list
+}
+
+// 模板名（如「默认好评（中）」）按当前界面语言渲染：
+// 「默认好评」走译文，括号里的语言代号也跟着换。
+// 模板名里的语言后缀 -> 语言名的 i18n 键（好让「默认好评（中）」在日文界面显示成「既定の高評価（中国語）」）
+const TPL_LANG_KEY = {
+  中: 'langName.zh', 英: 'langName.en', 日: 'langName.ja', 韩: 'langName.ko',
+  俄: 'langName.ru', 西: 'langName.es', 葡: 'langName.pt', 法: 'langName.fr',
+  德: 'langName.de', 意: 'langName.it', 印尼: 'langName.id', 泰: 'langName.th',
+  越: 'langName.vi', 土: 'langName.tr',
+}
+// 判定列：只说这是默认好评还是默认差评（各语言的默认评论已经合并到一起了）
+// 服务端日志按当前界面语言渲染：{ __log: true, k: 键, p: 参数, z: 中文兜底 }
+// 切换语言后，把面板里已有的日志按新语言重写一遍
+const LOG_RAW = []          // 原始日志条目（对象或字符串）
+function repaintLog() {
+  const box = $('log')
+  if (!box || !LOG_RAW.length) return
+  box.textContent = ''
+  for (const line of LOG_RAW) {
+    const txt = fmtLogLine(line)
+    const d = document.createElement('div'); d.textContent = txt
+    if (txt.indexOf('✓') >= 0) d.className = 'ok'
+    if (txt.indexOf('✗') >= 0 || (line && line.k === 'log.failed')) d.className = 'err'
+    box.append(d)
+  }
+}
+
+function fmtLogLine(line) {
+  if (!line || typeof line !== 'object' || !line.__log) return String(line)
+  const p = line.p || {}
+  // 流统计是个数组，单独拼
+  if (line.k === 'log.streams') {
+    const parts = (p.items || []).map((it) => {
+      const name = it.hot ? t('log.streamHot')
+        : it.incr ? t('log.streamIncr')
+          : t('log.streamShard').replace('{n}', it.shard)
+      return name + ' ' + t('log.pages').replace('{n}', it.pages)
+    })
+    return t('log.streams').replace('{v}', parts.join(t('unit.listSep')))
+  }
+  let tpl = t(line.k)
+  if (tpl === line.k && line.z) tpl = line.z      // 没这条译文就退回中文，别显示键名
+  return tpl.replace(/\{(\w+)\}/g, (m2, key) => {
+    if (!(key in p)) return m2
+    let v = p[key]
+    if (/Key$/.test(key)) v = t(String(v))        // 值是另一个译文键（如 modeKey）
+    return String(v)
+  })
+}
+
+function tplVerdict(tp) {
+  if (!tp.kind) return t('tpl.freq')
+  return tp.kind === 'df_good' ? t('filter.defGood') : t('filter.defBad')
+}
+
+// 「内容」列：按当前界面语言挑出这一类默认评论的官方原文。
+// 界面上是英文就显示英文那句，是日文就显示日文那句——因为各语言的默认评论已经合并成一行了。
+const TPL_UI_LANG = {
+  'zh-cn': '中', 'zh-tw': '中', 'en-us': '英', 'ja-jp': '日', 'ko-kr': '韩', 'ru-ru': '俄',
+  'es-es': '西', 'pt-pt': '葡', 'fr-fr': '法', 'de-de': '德', 'it-it': '意',
+  'id-id': '印尼', 'th-th': '泰', 'vi-vn': '越', 'tr-tr': '土',
+}
+function templateTextFor(kind) {
+  const suffix = TPL_UI_LANG[state.lang]
+  const arr = TPL_EXACT[(kind === 'df_good' ? '默认好评（' : '默认差评（') + suffix + '）']
+  if (!arr || !arr.length) return ''
+  // 中文有简繁两套，繁体界面给繁体那句
+  if (state.lang === 'zh-tw' && arr[1]) return arr[1]
+  return arr[0]
+}
+
+function renderStats() {
+  const g = state.data
+  const all = g ? g.replies : []
+  const total = all.length || 1   // 不能叫 t：会遮蔽全局的 t() 翻译函数
+  const good = all.filter(r => r._rating === 'good').length
+  const bad = all.filter(r => r._rating === 'bad').length
+  const dg = all.filter(r => r._tpl === 'df_good').length
+  const db = all.filter(r => r._tpl === 'df_bad').length
+    const written = all.filter(r => !r._tpl || r._tpl === 'df_mixed')
+  const official = g && g.meta.levelInfo && g.meta.levelInfo.goodRate
+  const box = $('stats'); box.innerHTML = ''
+  const mk = (v, l, color) => {
+    const d = document.createElement('div'); d.className = 'stat'
+    const b = document.createElement('b'); b.textContent = v; if (color) b.style.color = color
+    const s = document.createElement('span'); s.textContent = l
+    d.append(b, s); return d
+  }
+  box.append(
+    mk(all.length, t('stat.local')),
+    mk(official || ((good / total * 100).toFixed(1) + '%'), t(official ? 'stat.officialRate' : 'stat.localRate'), 'var(--good)'),
+    mk(good, t('stat.good'), 'var(--good)'),
+    mk(bad, t('stat.bad'), 'var(--bad)'),
+    mk((dg + db), t('stat.default'), 'var(--dflt)'),
+    mk(written.length, t('stat.written'))
+  )
+  const bar = $('bar'); bar.innerHTML = ''
+  for (const [n, c] of [[dg, 'var(--dflt)'], [db, '#a16207'],
+                        [written.filter(r => r._rating === 'good').length, 'var(--good)'],
+                        [written.filter(r => r._rating === 'bad').length, 'var(--bad)']]) {
+    const i = document.createElement('i'); i.style.width = (n / total * 100) + '%'; i.style.background = c; bar.append(i)
+  }
+  const tb = $('tplTable').querySelector('tbody'); tb.innerHTML = ''
+  $('tplCount').textContent = g ? t('stats.autoFound').replace('{n}', g.templates.length).replace('{thr}', state.thr) : ''
+  $('thrHint').textContent = g && g.templates.length
+      ? t('stats.recognized').replace('{n}', g.templates.filter(x => x.kind).length)
+    : ''
+  if (g) for (const tp of g.templates) {
+    const tr = document.createElement('tr')
+    // 一行 = 一类模板（好评 / 差评）。内容列显示【当前界面语言】那套官方文案，
+    // 这样英文界面看到的是英文那句、日文界面看到的是日文那句。
+    const a = document.createElement('td'); a.textContent = tp.kind ? templateTextFor(tp.kind) : tp.text
+    const b = document.createElement('td'); b.className = 'num'; b.textContent = tp.count
+    const c = document.createElement('td'); c.className = 'num'; c.textContent = (tp.count / total * 100).toFixed(1) + '%'
+    const d = document.createElement('td'); d.textContent = tplVerdict(tp)
+    if (tp.kind) d.style.color = 'var(--dflt)'
+    tr.append(a, b, c, d); tb.append(tr)
+  }
+}
+
+function makeCard(r, flash) {
+  const card = document.createElement('div')
+  card.className = 'card ' + (r._rating === 'good' ? 'good' : 'bad') + (r._tpl ? ' dflt' : '') + (flash ? ' flash' : '')
+  card.dataset.key = r._key
+  card.dataset.floor = r.floor_id
+
+  const star = document.createElement('button')
+  star.className = 'star' + (state.noteKeys.has(r._key) ? ' on' : '')
+  star.title = t(state.noteKeys.has(r._key) ? 'tip.starOn' : 'tip.starOff')
+  star.textContent = state.noteKeys.has(r._key) ? t('note.starred') : t('note.star')
+  star.onclick = (e) => { e.stopPropagation(); toggleNote(r, star) }
+  card.append(star)
+
+  const head = document.createElement('div'); head.className = 'chead'
+  const nick = document.createElement('span'); nick.className = 'nick'
+  nick.textContent = (r.user_info && r.user_info.nickname) || '—'
+  const fl = document.createElement('span'); fl.className = 'floor'; fl.textContent = '#' + r.floor_id
+  const tm = document.createElement('span'); tm.className = 'time'; tm.textContent = fmtTime(r.created_at)
+  head.append(nick, fl, tm)
+  const tg = document.createElement('span'); tg.className = 'tag ' + r._rating
+  tg.textContent = r._rating === 'good' ? t('filter.good') : t('filter.bad')
+  head.append(tg)
+  if (r._tpl) { const d = document.createElement('span'); d.className = 'tag dflt'; d.textContent = t(r._tpl === 'df_mixed' ? 'tag.mixed' : 'tag.default'); d.title = t(r._tpl === 'df_mixed' ? 'tag.mixedTip' : 'tag.defaultTip'); head.append(d) }
+  if (r._like > 0) { const lk = document.createElement('span'); lk.className = 'tag'; lk.textContent = '👍 ' + r._like; head.append(lk) }
+  card.append(head)
+
+  const body = document.createElement('div'); body.className = 'content'; body.textContent = r._text || t('card.empty')
+  card.append(body)
+
+  if (r._subs.length) {
+    const subs = document.createElement('div'); subs.className = 'subs'
+    for (const s of r._subs) {
+      const d = document.createElement('div')
+      d.textContent = '↳ ' + ((s.user_info && s.user_info.nickname) || '') + '：' + ((s.content || '').trim())
+      subs.append(d)
+    }
+    card.append(subs)
+  }
+  const foot = document.createElement('div'); foot.className = 'foot'
+  const bits = []
+  if (r.client_ip) bits.push('IP ' + r.client_ip)
+  if (r.is_owner) bits.push('作者')
+  foot.textContent = bits.join('　·　')
+  card.append(foot)
+  return card
+}
+
+function renderList(reset, focusKey) {
+  const box = $('list')
+  if (!state.data) { box.innerHTML = '<div class="empty">' + t('list.noData') + '</div>'; $('filterCount').textContent = ''; return }
+  const list = filtered()
+  if (reset) { box.innerHTML = ''; state.shown = 200 }
+
+  if (focusKey) {
+    const idx = list.findIndex(r => r._key === focusKey)
+    if (idx >= 0) state.shown = Math.max(state.shown, idx + 60)
+  }
+  const hasFilter = state.q || state.mood !== 'all' || state.hideDefault || state.dateFrom || state.dateTo
+  const bits = [t('filter.matched').replace('{n}', list.length)]
+  if (state.dateFrom || state.dateTo) {
+    bits.push(t('filter.date') + ' ' + (state.dateFrom || '…') + ' → ' + (state.dateTo || '…'))
+  }
+  bits.push(t('unit.localTotal').replace('{n}', state.data.replies.length))
+  $('filterCount').textContent = hasFilter ? bits.join('　') : ''
+  if (reset && !list.length) { box.innerHTML = '<div class="empty">' + t('list.noMatch') + '</div>'; return }
+
+  const start = reset ? 0 : box.querySelectorAll('.card').length
+  const frag = document.createDocumentFragment()
+  for (const r of list.slice(start, state.shown)) frag.append(makeCard(r, focusKey && r._key === focusKey))
+  box.append(frag)
+
+  const old = box.querySelector('.more'); if (old) old.remove()
+  const rest = list.length - state.shown
+  if (rest > 0) {
+    const b = document.createElement('button'); b.className = 'more'
+    b.textContent = t('list.more').replace('{n}', rest)
+    b.onclick = () => { state.shown += 300; renderList(false) }
+    box.append(b)
+  }
+  if (focusKey) {
+    const el = box.querySelector('.card[data-key="' + CSS.escape(focusKey) + '"]')
+    if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }
+}
+
+function renderAll(reset, focusKey) { renderStats(); renderList(reset !== false, focusKey) }
+
+/* ═══════════ 便签 ═══════════ */
+async function loadNotes() {
+  const seq = ++noteLoadSeq
+  const g = state.games[state.gameIdx]
+  state.notes = []; state.noteKeys = new Set()
+  if (g) {
+    try {
+      const response = await fetch('/api/notes?name=' + encodeURIComponent(g.name))
+      const j = await response.json()
+      if (seq !== noteLoadSeq) return
+      if (!response.ok || !Array.isArray(j.notes)) throw new Error(lookupErrorText(j))
+      state.notes = j.notes; state.noteKeys = new Set(j.notes.map(n => String(n.replyId || n.floorId)))
+    } catch (error) { if (seq === noteLoadSeq) setStatus('err', t('error.noteSave') + ': ' + error.message) }
+  }
+  try {
+    const response = await fetch('/api/notes-all'), j = await response.json()
+    if (seq !== noteLoadSeq) return
+    if (!response.ok || !Array.isArray(j.notes)) throw new Error(lookupErrorText(j))
+    state.allNotes = j.notes
+  } catch (error) { if (seq !== noteLoadSeq) return; setStatus('err', t('error.noteSave') + ': ' + error.message) }
+  $('noteBadge').textContent = state.allNotes.length
+  renderNotes()
+}
+
+// ── 一条便签卡片 ──
+function noteCard(n) {
+  const d = document.createElement('div'); d.className = 'note'
+  d.dataset.noteKey = String(n.replyId || n.floorId)
+  d.dataset.gameName = n._gameName || n.gameName || (state.games[state.gameIdx] || {}).name || ''
+  const head = document.createElement('div'); head.className = 'chead'
+  const nick = document.createElement('span'); nick.className = 'nick'; nick.textContent = n.nickname || t('note.noNick')
+  const fl = document.createElement('span'); fl.className = 'floor'; fl.textContent = '#' + n.floorId
+  const tm = document.createElement('span'); tm.className = 'time'; tm.textContent = fmtTime(n.createdAt)
+  head.append(nick, fl, tm)
+  if (n.likeCount > 0) { const l = document.createElement('span'); l.className = 'tag'; l.textContent = '👍 ' + n.likeCount; head.append(l) }
+  d.append(head)
+
+  // 来源：哪个游戏、哪个区服
+  const srcGame = noteGameName(n)
+  const srcRegion = noteRegionName(n)
+  if (srcGame) {
+    const src = document.createElement('div'); src.className = 'notesrc'
+    src.textContent = t('note.from').replace('{src}', srcGame + (srcRegion ? ' · ' + srcRegion : ''))
+    d.append(src)
+  }
+
+  const body = document.createElement('div'); body.className = 'content'; body.textContent = n.content || t('note.noContent')
+  d.append(body)
+
+  const ta = document.createElement('textarea')
+  ta.className = 'mytext'
+  ta.placeholder = t('note.placeholder')
+  const noteGame = d.dataset.gameName, noteKey = d.dataset.noteKey
+  ta.value = noteStore.draft(noteGame, noteKey, n.text || '')
+  ta.oninput = () => noteStore.schedule(noteGame, noteKey, { replyId: n.replyId, floorId: n.floorId, text: ta.value }, text => {
+    n.text = text
+    if ((state.games[state.gameIdx] || {}).name === noteGame) {
+      const local = state.notes.find(x => String(x.replyId || x.floorId) === noteKey)
+      if (local) local.text = text
+    }
+    const all = (state.allNotes || []).find(x => x._gameName === noteGame && String(x.replyId || x.floorId) === noteKey)
+    if (all) all.text = text
+  })
+  ta.onblur = () => { noteStore.flush(noteGame, noteKey).catch(() => {}) }
+  d.append(ta)
+
+  const meta = document.createElement('div'); meta.className = 'notemeta'
+  const bits = []
+  if (n.uid) bits.push('uid ' + n.uid)
+  if (n.clientIp) bits.push('IP ' + n.clientIp)
+  bits.push(t('note.savedAt').replace('{t}', fmtTime(n.savedAt)))
+  meta.textContent = bits.join('　·　')
+  d.append(meta)
+
+  const acts = document.createElement('div'); acts.className = 'acts'
+  const bLoc = document.createElement('button'); bLoc.textContent = t('note.locate')
+  bLoc.onclick = async () => {
+    // 便签可能属于别的关卡，先切过去
+    const idx = state.games.findIndex(x => x.name === n._gameName)
+    if (idx < 0) { setStatus('err', t('note.gameGone')); return }
+    if (idx !== state.gameIdx) {
+      state.gameIdx = idx
+      state.selectOpen.add(groupOf(state.games[idx]))
+      syncGameSelectLabel(); renderGameSelectPanel(); updateGroupBtn()
+      await loadComments()
+    }
+    switchTab('list')
+    state.q = ''; $('q').value = ''
+    state.mood = 'all'; state.hideDefault = false; $('hideDefault').checked = false
+    state.sort = 'floor_desc'; $('sort').value = 'floor_desc'
+    ;[...$('mood').children].forEach(x => x.classList.toggle('on', x.dataset.m === 'all'))
+    renderAll(true, String(n.replyId || n.floorId))
+  }
+  const bDel = document.createElement('button'); bDel.className = 'danger'; bDel.textContent = t('note.remove')
+  bDel.onclick = () => removeNote(n)
+  acts.append(bLoc, bDel)
+  d.append(acts)
+  return d
+}
+
+// 便签分组标题行（可折叠）
+function noteGroupRow(label, count, openKey, sub) {
+  const d = document.createElement('div')
+  d.className = 'ngroup' + (sub ? ' sub' : '')
+  const open = state.noteOpen.has(openKey)
+  const arw = document.createElement('span'); arw.className = 'arw'; arw.textContent = open ? '▾' : '▸'
+  const nm = document.createElement('span'); nm.className = 'gn'; nm.textContent = label
+  const c = document.createElement('span'); c.className = 'gc'; c.textContent = t('unit.rows').replace('{n}', count)
+  d.append(arw, nm, c)
+  d.onclick = () => {
+    if (state.noteOpen.has(openKey)) state.noteOpen.delete(openKey)
+    else state.noteOpen.add(openKey)
+    renderNotes()
+  }
+  return d
+}
+
+function renderNotes() {
+  const box = $('noteList')
+  box.innerHTML = ''
+  const all = state.allNotes || []
+  if (!all.length) {
+    box.innerHTML = '<div class="empty">' + t('note.empty') + '</div>'
+    return
+  }
+  const sorted = all.slice().sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || ''))
+  const mode = state.noteMode
+
+  // 默认：平铺
+  if (mode === 'flat') {
+    for (const n of sorted) box.append(noteCard(n))
+    return
+  }
+
+  const byRegion = (a, b) => {
+    const ra = Math.min(...a.map(x => regionRank(x._region)))
+    const rb = Math.min(...b.map(x => regionRank(x._region)))
+    return ra - rb
+  }
+
+  // 只按区服
+  if (mode === 'region') {
+    const m = new Map()
+    for (const n of sorted) {
+      const k = n._region || ''          // 用区服代码分组，显示时再翻
+      if (!m.has(k)) m.set(k, [])
+      m.get(k).push(n)
+    }
+    const keys = [...m.keys()].sort((a, b) => byRegion(m.get(a), m.get(b)) || String(a).localeCompare(String(b)))
+    for (const k of keys) {
+      const items = m.get(k)
+      const key = 'r:' + k
+      const label = k ? regionName(k, items[0] && items[0]._regionLabel) : t('note.unknownRegion')
+      box.append(noteGroupRow(label, items.length, key))
+      if (!state.noteOpen.has(key)) continue
+      for (const n of items) box.append(noteCard(n))
+    }
+    return
+  }
+
+  // 按游戏（可再分到区服）
+  const gm = new Map()
+  for (const n of sorted) {
+    const k = n._levelName || n._gameName || ''   // 空 = 未知，显示时给译文
+    if (!gm.has(k)) gm.set(k, [])
+    gm.get(k).push(n)
+  }
+  const gkeys = [...gm.keys()].sort((a, b) => byRegion(gm.get(a), gm.get(b)) || a.localeCompare(b, 'zh'))
+  for (const gk of gkeys) {
+    const items = gm.get(gk)
+    const gkey = 'g:' + gk
+    box.append(noteGroupRow(gk || t('note.unknownGame'), items.length, gkey))
+    if (!state.noteOpen.has(gkey)) continue
+
+    if (mode !== 'game+region') { for (const n of items) box.append(noteCard(n)); continue }
+
+    // 二级：区服（只有一个区服就不多套一层）
+    const rm = new Map()
+    for (const n of items) {
+      const k = n._region || ''          // 用区服代码分组，显示时再翻
+      if (!rm.has(k)) rm.set(k, [])
+      rm.get(k).push(n)
+    }
+    const rkeys = [...rm.keys()].sort((a, b) => byRegion(rm.get(a), rm.get(b)) || a.localeCompare(b, 'zh'))
+    if (rkeys.length <= 1) { for (const n of items) box.append(noteCard(n)); continue }
+    for (const rk of rkeys) {
+      const ritems = rm.get(rk)
+      const rkey = 'r:' + gk + '|' + rk
+      const rlabel = rk ? regionName(rk, ritems[0] && ritems[0]._regionLabel) : t('note.unknownRegion')
+      box.append(noteGroupRow(rlabel, ritems.length, rkey, true))
+      if (!state.noteOpen.has(rkey)) continue
+      for (const n of ritems) box.append(noteCard(n))
+    }
+  }
+}
+
+async function toggleNote(r, starEl) {
+  const g = state.games[state.gameIdx]
+  if (!g || starEl.disabled) return
+  const removing = state.noteKeys.has(r._key)
+  starEl.disabled = true
+  try {
+    if (removing) await noteStore.remove(g.name, r._key)
+    else await noteStore.save(g.name, r._key, {
+      replyId: r.reply_id, floorId: r.floor_id, nickname: (r.user_info || {}).nickname || '', uid: (r.user_info || {}).uid || '',
+      content: r._text, createdAt: r.created_at, clientIp: r.client_ip || '', likeCount: r._like, text: '',
+      game: g.levelName || g.name, gameName: g.name, region: g.region, regionLabel: g.regionLabel || g.region,
+    })
+    await loadNotes()
+    if ((state.games[state.gameIdx] || {}).name === g.name) {
+      starEl.textContent = t(removing ? 'note.star' : 'note.starred')
+      starEl.classList.toggle('on', !removing)
+      starEl.title = t(removing ? 'note.starTitle' : 'tip.starOn')
+    }
+  } catch (error) { setStatus('err', t('error.noteSave') + ': ' + error.message) }
+  finally { starEl.disabled = false }
+}
+
+async function removeNote(n) {
+  const gameName = n._gameName || (state.games[state.gameIdx] || {}).name
+  if (!gameName) return
+  try {
+    await noteStore.remove(gameName, String(n.replyId || n.floorId))
+    await loadNotes()
+  } catch (error) { setStatus('err', t('error.noteSave') + ': ' + error.message) }
+}
+
+/* ═══════════ 数据加载 ═══════════ */
+async function loadGames(keep) {
+  const seq = ++gameLoadSeq
+  const prev = keep && state.gameIdx >= 0 && state.games[state.gameIdx] ? state.games[state.gameIdx].name : null
+  const j = await (await fetch('/api/games')).json()
+  if (seq !== gameLoadSeq) return
+  if (!Array.isArray(j.games)) throw new Error(lookupErrorText(j))
+  state.games = j.games || []
+  state.groups = j.groups || []
+  if (!state.games.length) {
+    state.gameIdx = -1; state.data = null
+    syncGameSelectLabel(); renderGameSelectPanel()
+    renderMgmt(); return
+  }
+  let idx = 0
+  if (prev) { const f = state.games.findIndex(g => g.name === prev); if (f >= 0) idx = f }
+  else if (state.gameIdx >= 0 && state.gameIdx < state.games.length) idx = state.gameIdx
+  state.gameIdx = idx
+  // 首次打开时只展开当前所在的分组，其余收起（不然列表太长）
+  if (!state.selectOpen.size) state.selectOpen.add(groupOf(state.games[idx]))
+  syncGameSelectLabel()
+  renderGameSelectPanel()
+  updateGroupBtn()
+  renderMgmt()
+}
+
+// 当前选中项所在「组」的成员：同一款游戏在各国服的条目
+function groupMembers(idx) {
+  const i = (idx == null) ? state.gameIdx : idx
+  const g = state.games[i]
+  if (!g) return []
+  const key = g.group || g.baseName || g.name
+  return state.games.filter(x => (x.group || x.baseName || x.name) === key)
+}
+
+function selectEntryTab(idx) {
+  if (idx < 0 || idx >= state.games.length) return
+  state.gameIdx = idx
+  state.selectOpen.add(groupOf(state.games[idx]))
+  syncGameSelectLabel()
+  renderGameSelectPanel()
+  updateGroupBtn()
+  loadComments()
+}
+
+// ── 自定义关卡下拉（原生 select 的 optgroup 不能折叠）──
+function gameLabelOf(g) {
+  return `${g.levelName || g.name} · ${regionName(g.region, g.regionLabel)} (${t('unit.rows').replace('{n}', g.count)})`
+}
+
+function syncGameSelectLabel() {
+  const g = state.games[state.gameIdx]
+  const el = $('gselLabel')
+  if (el) el.textContent = g ? gameLabelOf(g) : t('list.noGamesShort')
+}
+
+function renderGameSelectPanel() {
+  const box = $('gselPanel')
+  if (!box) return
+  box.innerHTML = ''
+  const curGroup = state.games[state.gameIdx] ? groupOf(state.games[state.gameIdx]) : ''
+  if (!state.games.length) {
+    const d = document.createElement('div')
+    d.className = 'gsi'
+    d.textContent = t('list.noGamesShort')
+    box.append(d); return
+  }
+  const gmap = new Map()
+  state.games.forEach((g, i) => {
+    const k = groupOf(g)
+    if (!gmap.has(k)) gmap.set(k, [])
+    gmap.get(k).push([g, i])
+  })
+  const keys = [...gmap.keys()].sort((a, b) => {
+    const ra = Math.min(...gmap.get(a).map((x) => regionRank(x[0].region)))
+    const rb = Math.min(...gmap.get(b).map((x) => regionRank(x[0].region)))
+    return ra - rb || a.localeCompare(b, 'zh')
+  })
+  for (const k of keys) {
+    const members = gmap.get(k).sort((x, y) =>
+      regionRank(x[0].region) - regionRank(y[0].region)
+      || String(x[0].region).localeCompare(String(y[0].region))
+      || (y[0].count || 0) - (x[0].count || 0))
+    const open = state.selectOpen.has(k)
+
+    // 分组标题（可点击折叠）
+    const h = document.createElement('div')
+    h.className = 'gsg' + (open ? ' open' : '') + (k === curGroup ? ' cur' : '')
+    const arw = document.createElement('span'); arw.className = 'arw'; arw.textContent = open ? '▾' : '▸'
+    const nm = document.createElement('span'); nm.textContent = k
+    const cnt = document.createElement('span'); cnt.className = 'cnt'; cnt.textContent = t('unit.servers').replace('{n}', members.length)
+    h.append(arw, nm, cnt)
+    h.onclick = (e) => {
+      e.stopPropagation()
+      if (state.selectOpen.has(k)) state.selectOpen.delete(k); else state.selectOpen.add(k)
+      renderGameSelectPanel()
+    }
+    box.append(h)
+    if (!open) continue
+
+    for (const [g, i] of members) {
+      const it = document.createElement('div')
+      it.className = 'gsi' + (i === state.gameIdx ? ' on' : '')
+      it.textContent = gameLabelOf(g)
+      it.onclick = (e) => { e.stopPropagation(); closeGameSelect(); selectEntryTab(i) }
+      box.append(it)
+    }
+  }
+}
+
+function openGameSelect() {
+  renderGameSelectPanel()
+  $('gselPanel').hidden = false
+  $('gsel').classList.add('open')
+}
+function closeGameSelect() {
+  const p = $('gselPanel')
+  if (p) p.hidden = true
+  const w = $('gsel')
+  if (w) w.classList.remove('open')
+}
+$('gselBtn').onclick = (e) => {
+  e.stopPropagation()
+  if ($('gselPanel').hidden) openGameSelect(); else closeGameSelect()
+}
+document.addEventListener('click', () => closeGameSelect())
+function updateGroupBtn() {
+  const btn = $('btnSyncGroup')
+  const bf = $('btnGroupFull')
+  const gb = $('btnGroup')
+  if (!btn) return
+  const members = groupMembers()
+  if (!members.length) {
+    btn.textContent = t('btn.syncGroup'); btn.disabled = true
+    if (bf) bf.disabled = true
+    if (gb) gb.disabled = true
+    return
+  }
+  const base = members[0].group || members[0].baseName || members[0].name
+  btn.disabled = false
+  btn.textContent = members.length > 1 ? `${t('btn.syncGroup')} (${members.length})` : t('btn.syncGroup')
+    btn.title = t('tip.groupSync').replace('{group}', base)
+      .replace('{list}', members.map((m) => regionName(m.region, m.regionLabel)).join(t('unit.listSep')))
+  if (bf) {
+    bf.disabled = false
+      bf.title = t('tip.groupFull').replace('{group}', base)
+        .replace('{list}', members.map((m) => regionName(m.region, m.regionLabel)).join(t('unit.listSep')))
+  }
+  if (gb) {
+    gb.disabled = false
+      gb.title = t('tip.groupChange')
+        .replace('{name}', (state.games[state.gameIdx] || {}).name || '')
+        .replace('{group}', base).replace('{n}', members.length)
+  }
+}
+
+async function loadComments() {
+  const seq = ++state.loadSeq
+  const g = state.games[state.gameIdx]
+  if (!g || !g.count) { state.data = null; renderAll(true); await loadNotes(); return }
+  // 竞态保护：连点下拉时，先发的请求（评论多、慢）可能后回来，
+  // 把后发请求的结果覆盖掉 —— 表现就是「下拉标签变了，下面的数据还是上一关的」。
+  // 用一个自增序号，回来时对不上就直接丢弃。
+  for (let i = 0; i < 3; i++) {
+    try {
+      const r = await fetch('/api/comments?name=' + encodeURIComponent(g.name))
+      if (!r.ok) throw new Error('HTTP ' + r.status)
+      const data = buildData(await r.json())
+      if (seq !== state.loadSeq) return        // 已经切走了，这份结果作废
+      state.data = data
+      await loadNotes()
+      renderAll(true)
+      return
+    } catch (e) {
+      if (i === 2) {
+        if (seq !== state.loadSeq) return
+        state.data = null
+        renderAll(true)
+        setStatus('err', t('status.loadFail'))
+        return
+      }
+      await new Promise((r2) => setTimeout(r2, 250 * (i + 1)))
+    }
+  }
+}
+
+function renderMgmt() {
+  const tb = $('mgmtTable').querySelector('tbody')
+  tb.innerHTML = ''
+  if (!state.games.length) {
+    const tr = document.createElement('tr')
+    const td = document.createElement('td'); td.colSpan = 7; td.className = 'muted'
+    td.textContent = t('mgmt.noGames')
+    tr.append(td); tb.append(tr); return
+  }
+
+  // 按【分组】组织（分组默认就是游戏名）。点标题行展开/收起，展开后列出各服和操作。
+  const gmap = new Map()
+  for (const g of state.games) {
+    const key = groupOf(g)
+    if (!gmap.has(key)) gmap.set(key, [])
+    gmap.get(key).push(g)
+  }
+  const keys = [...gmap.keys()].sort((a, b) => {
+    const ra = Math.min(...gmap.get(a).map((x) => regionRank(x.region)))
+    const rb = Math.min(...gmap.get(b).map((x) => regionRank(x.region)))
+    return ra - rb || a.localeCompare(b, 'zh')
+  })
+  // 第一次进管理页时默认展开第一组，免得看起来空空的
+  if (!state.mgmtInit) { state.mgmtInit = true; if (keys.length) state.mgmtOpen.add(keys[0]) }
+
+  for (const key of keys) {
+    const list = gmap.get(key).sort((x, y) =>
+      regionRank(x.region) - regionRank(y.region)
+      || String(x.region).localeCompare(String(y.region)))
+    const total = list.reduce((s, x) => s + (x.count || 0), 0)
+    const notes = list.reduce((s, x) => s + (x.noteCount || 0), 0)
+    const open = state.mgmtOpen.has(key)
+
+    // ── 组标题行（可点开）──
+    const trh = document.createElement('tr')
+    trh.className = 'grprow' + (open ? ' open' : '')
+    const tdh = document.createElement('td'); tdh.colSpan = 7
+    const inner = document.createElement('div'); inner.className = 'grpinner'
+    const arw = document.createElement('span'); arw.className = 'arw'; arw.textContent = open ? '▾' : '▸'
+    const nm = document.createElement('span'); nm.className = 'gname'; nm.textContent = key
+    const meta = document.createElement('span'); meta.className = 'gmeta'
+    meta.textContent = t('mgmt.groupMeta').replace('{n}', list.length).replace('{total}', total)
+      + (notes ? ' · ' + t('mgmt.notesCount').replace('{n}', notes) : '')
+    inner.append(arw, nm, meta)
+
+    // 组名和关卡名不一致时提醒（分组填错了）
+    const lset = new Set(list.map((x) => x.levelName || x.name))
+    if (lset.size === 1 && !lset.has(key)) {
+      const warn = document.createElement('span'); warn.className = 'gwarn'
+      warn.textContent = t('mgmt.actualName').replace('{name}', [...lset][0])
+      inner.append(warn)
+    }
+
+    const grpBtn = document.createElement('button')
+    grpBtn.textContent = t('btn.renameGroup'); grpBtn.style.marginLeft = 'auto'
+    grpBtn.title = t('tip.grpRename')
+    grpBtn.onclick = (e) => { e.stopPropagation(); openGroupDialog(list[0]) }
+
+    const gRm = document.createElement('button')
+    gRm.textContent = t('btn.removeGroup')
+    gRm.title = t('tip.grpRemove').replace('{n}', list.length)
+    gRm.onclick = (e) => { e.stopPropagation(); mgmtRemoveGroup(key, false) }
+
+    const gDel = document.createElement('button')
+    gDel.className = 'danger'; gDel.textContent = t('btn.deleteGroup')
+    gDel.title = t('tip.grpDelete')
+    gDel.onclick = (e) => { e.stopPropagation(); mgmtRemoveGroup(key, true) }
+
+    inner.append(grpBtn, gRm, gDel)
+
+    tdh.append(inner)
+    trh.append(tdh)
+    trh.onclick = () => {
+      if (state.mgmtOpen.has(key)) state.mgmtOpen.delete(key)
+      else state.mgmtOpen.add(key)
+      renderMgmt()
+    }
+    tb.append(trh)
+
+    if (!open) continue
+
+    // ── 展开后：该组下每个区服一行 ──
+    for (const g of list) {
+      const tr = document.createElement('tr')
+      tr.className = 'subrow'
+
+      const nameTd = document.createElement('td')
+      nameTd.textContent = g.levelName || g.name
+      tr.append(nameTd)
+
+      const regTd = document.createElement('td')
+      regTd.textContent = regionName(g.region, g.regionLabel)
+      tr.append(regTd)
+
+      const cells = [
+        [String(g.count), 'num'], [String(g.noteCount), 'num'], [fmtBytes(g.bytes), 'num'],
+        [fmtTime(g.fetchedAt) || '-', ''],
+      ]
+      for (const [v, cls] of cells) {
+        const td = document.createElement('td'); td.textContent = v
+        if (cls) td.className = cls
+        tr.append(td)
+      }
+
+      const ops = document.createElement('td')
+      const b1 = document.createElement('button'); b1.textContent = t('btn.removeReg')
+      b1.title = t('tip.rowRemove')
+      b1.onclick = () => mgmtRemove(g.name, false)
+      const b2 = document.createElement('button'); b2.className = 'danger'; b2.textContent = t('btn.deleteRow')
+      b2.title = t('tip.rowDelete')
+      b2.onclick = () => mgmtRemove(g.name, true)
+      ops.append(b1, b2)
+      tr.append(ops)
+      tb.append(tr)
+    }
+  }
+}
+
+/* ── 改组对话框 ── */
+let gpTarget = null
+
+function groupOf(g) { return g.group || g.baseName || g.name }
+
+function openGroupDialog(g) {
+  gpTarget = g
+  const cur = groupOf(g)
+  const members = state.games.filter((x) => groupOf(x) === cur)
+    // 「组名」当前在组「X」 —— 这组共 N 个服：A、B、C
+    $('gpInfo').textContent = t('grp.info')
+      .replace('{name}', g.name).replace('{group}', cur)
+      .replace('{n}', members.length)
+      .replace('{list}', members.map((m) => regionName(m.region, m.regionLabel)).join(t('unit.listSep')))
+  $('gpMsg').className = 'msg'; $('gpMsg').textContent = ''
+    $('gpAll').textContent = members.length > 1 ? t('grp.allN').replace('{n}', members.length) : t('grp.all')
+  $('gpAll').disabled = members.length < 2
+  $('gpAll').title = t(members.length < 2 ? 'tip.gpAllAlone' : 'tip.gpAll')
+  $('gpDissolve').disabled = members.length < 2
+  $('gpDissolve').title = members.length < 2
+    ? t('tip.gpDissolveAlone')
+    : t('tip.gpDissolve').replace('{group}', cur).replace('{n}', members.length)
+
+  // 下拉里列出所有已有分组，最后一项是「新建」
+  const sel = $('gpSelect')
+  sel.innerHTML = ''
+  for (const x of (state.groups || [])) {
+    const o = document.createElement('option')
+    o.value = x.group
+      o.textContent = x.group + t('unit.serversParen').replace('{n}', x.games.length)
+        + (x.group === cur ? t('grp.current') : '')
+    sel.append(o)
+  }
+  const oNew = document.createElement('option')
+  oNew.value = '__new__'
+  oNew.textContent = t('grp.new')
+  sel.append(oNew)
+  sel.value = cur
+
+  $('gpNew').value = ''
+  $('gpNew').style.display = 'none'
+
+  $('dlgGroup').showModal()
+  setTimeout(() => sel.focus(), 50)
+}
+
+// 当前下拉选择/输入框里到底要用哪个组名
+function chosenGroup() {
+  const v = $('gpSelect').value
+  return v === '__new__' ? String($('gpNew').value || '').trim() : v
+}
+
+$('gpSelect').onchange = () => {
+  const isNew = $('gpSelect').value === '__new__'
+  $('gpNew').style.display = isNew ? '' : 'none'
+  $('gpMsg').className = 'msg'; $('gpMsg').textContent = ''
+  if (isNew) setTimeout(() => $('gpNew').focus(), 30)
+}
+
+async function postJson(url, obj) {
+  const response = await fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(obj),
+  })
+  const result = await response.json()
+  if (result.errorKey) result.error = t(result.errorKey)
+  return result
+}
+
+$('btnGroupFull').onclick = () => {
+  const members = groupMembers()
+  if (!members.length) return
+  const base = members[0].group || members[0].baseName || members[0].name
+    const tip = t('confirm.groupFull')
+      .replace('{group}', base).replace('{n}', members.length)
+      .replace('{list}', members.map((m) => t('confirm.item').replace('{region}', regionName(m.region, m.regionLabel)).replace('{n}', m.count)).join('\n'))
+  if (!confirm(tip)) return
+  runSync(true, null, false, members.map(m => m.name))
+}
+
+$('btnGroup').onclick = () => {
+  const g = state.games[state.gameIdx]
+  if (!g) { setStatus('err', t('status.noGame')); return }
+  openGroupDialog(g)
+}
+
+$('gpCancel').onclick = () => $('dlgGroup').close()
+
+$('gpOne').onclick = async () => {
+  const g = gpTarget
+  if (!g) return
+  const nv = chosenGroup()
+  const msg = $('gpMsg')
+  if (!nv) { msg.className = 'msg err'; msg.textContent = t('grp.emptyName'); return }
+  if (nv === groupOf(g)) { msg.className = 'msg err'; msg.textContent = t('grp.unchanged'); return }
+  const r = await postJson('/api/set-group', { name: g.name, group: nv })
+  if (!r.ok) { msg.className = 'msg err'; msg.textContent = r.error || t('grp.changeFail'); return }
+  $('dlgGroup').close()
+  setStatus('ok', t('status.grouped').replace('{name}', g.name).replace('{group}', nv))
+  await loadGames(true)
+  await loadComments()
+}
+
+$('gpDissolve').onclick = async () => {
+  const g = gpTarget
+  if (!g) return
+  const cur = groupOf(g)
+  const members = state.games.filter((x) => groupOf(x) === cur)
+  const msg = $('gpMsg')
+  if (members.length < 2) { msg.className = 'msg err'; msg.textContent = t('grp.single'); return }
+    if (!confirm(t('confirm.dissolve').replace('{group}', cur).replace('{n}', members.length))) return
+  const r = await postJson('/api/dissolve-group', { group: cur })
+  if (!r.ok) { msg.className = 'msg err'; msg.textContent = r.error || t('grp.splitFail'); return }
+  $('dlgGroup').close()
+  setStatus('ok', t('status.dissolved').replace('{group}', cur).replace('{n}', r.changed))
+  await loadGames(true)
+  await loadComments()
+}
+
+$('gpAll').onclick = async () => {
+  const g = gpTarget
+  if (!g) return
+  const cur = groupOf(g)
+  const nv = chosenGroup()
+  const msg = $('gpMsg')
+  if (!nv) { msg.className = 'msg err'; msg.textContent = t('grp.emptyName'); return }
+  if (nv === cur) { msg.className = 'msg err'; msg.textContent = t('grp.unchanged'); return }
+
+  const members = state.games.filter((x) => groupOf(x) === cur)
+  const exist = (state.groups || []).some((x) => x.group === nv)
+    const tip = t('confirm.renameGroup')
+      .replace('{from}', cur).replace('{to}', nv).replace('{n}', members.length)
+      .replace('{list}', members.map((m) => regionName(m.region, m.regionLabel)).join(t('unit.listSep')))
+      + (exist ? t('confirm.renameMerge').replace('{to}', nv) : '')
+  if (!confirm(tip)) return
+
+  const r = await postJson('/api/rename-group', { from: cur, to: nv })
+  if (!r.ok) { msg.className = 'msg err'; msg.textContent = r.error || t('grp.renameFail'); return }
+  $('dlgGroup').close()
+  setStatus('ok', t('status.renamed').replace('{from}', cur).replace('{to}', nv).replace('{n}', r.changed)
+    + (r.mergedIntoExisting ? t('grp.merged') : ''))
+  await loadGames(true)
+  await loadComments()
+}
+
+async function mgmtRemove(name, deleteData) {
+    const txt = deleteData
+      ? t('confirm.rowDelete').replace('{name}', name)
+      : t('confirm.rowRemove').replace('{name}', name)
+  if (!confirm(txt)) return
+  try {
+  await noteStore.flushAll()
+  const j = await (await fetch('/api/remove', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, deleteData }),
+  })).json()
+  if (!j.ok) { setStatus('err', lookupErrorText(j)); return }
+  if (deleteData && j.removedFiles) setStatus('ok', t('status.deletedFiles').replace('{name}', name).replace('{n}', j.removedFiles))
+  else setStatus('', t('status.removed').replace('{name}', name))
+  await loadGames(true)
+  await loadComments()
+  } catch (error) { setStatus('err', t('error.request') + ': ' + error.message) }
+}
+
+async function mgmtRemoveGroup(groupName, deleteData) {
+  const members = state.games.filter((g) => groupOf(g) === groupName)
+  if (!members.length) return
+  const regions = members.map((m) => regionName(m.region, m.regionLabel)).join(t('unit.listSep'))
+    const txt = deleteData
+      ? t('confirm.grpDelete').replace('{group}', groupName).replace('{n}', members.length).replace('{regions}', regions)
+      : t('confirm.grpRemove').replace('{group}', groupName).replace('{n}', members.length).replace('{regions}', regions)
+  if (!confirm(txt)) return
+  try {
+  await noteStore.flushAll()
+  const j = await (await fetch('/api/remove-group', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ group: groupName, deleteData }),
+  })).json()
+  if (!j.ok) { setStatus('err', lookupErrorText(j) || t('status.deleteFail')); return }
+  state.mgmtOpen.delete(groupName)
+  setStatus(deleteData ? 'ok' : '',
+    t(deleteData ? 'status.groupDeleted' : 'status.groupRemoved')
+      .replace('{group}', groupName).replace('{n}', j.removed.length).replace('{files}', j.removedFiles || 0))
+  await loadGames(true)
+  await loadComments()
+  } catch (error) { setStatus('err', t('error.request') + ': ' + error.message) }
+}
+
+/* ═══════════ 同步 ═══════════ */
+let polling = null
+let syncStarting = false
+function setStatus(kind, text) { $('dot').className = 'dot ' + kind; $('statusText').textContent = text; $('statusText').title = text }
+
+async function runSync(full, name, all, names) {
+  if (polling || syncStarting) return false
+  const g = state.games[state.gameIdx]
+  const body = { full: !!full }
+  if (all) {
+    // 不传目标 → 服务端同步全部
+  } else if (Array.isArray(names) && names.length) {
+    body.names = names            // 按组更新：一组名字（同一游戏在各服）
+  } else {
+    const target = name || (g ? g.name : null)
+    if (target) body.name = target
+  }
+  let j
+  syncStarting = true
+  try { j = await postJson('/api/sync', body) }
+  catch (error) { setStatus('err', t('error.request') + ': ' + error.message); return false }
+  finally { syncStarting = false }
+  if (!j.ok) { setStatus('err', lookupErrorText(j) || t('status.startFail')); return false }
+
+  $('syncPanel').classList.add('show')
+  $('log').textContent = ''; LOG_RAW.length = 0
+  $('btnSync').disabled = true; $('btnFull').disabled = true
+  $('btnSyncGroup').disabled = true; $('btnGroupFull').disabled = true
+  setStatus('run', t(full ? 'status.syncingFull' : 'status.syncing'))
+
+  return await new Promise((resolve) => {
+    let since = 0
+    // 防重叠：同步忙碌时 /api/progress 可能超过 600ms，下一个 tick 会拿同一个 since
+    // 再取一次，同一批日志就被追加两遍（表现是日志重复）。
+    let busy = false
+    polling = setInterval(async () => {
+      if (busy) return
+      busy = true
+      try {
+        const pj = await (await fetch('/api/progress?since=' + since)).json()
+        if (j.jobId !== undefined && pj.id !== j.jobId) throw Object.assign(new Error(t('error.jobChanged')), { code: 'JOB_CHANGED' })
+        since = pj.total
+        if (pj.lines.length) {
+          const log = $('log')
+          for (const line of pj.lines) {
+            LOG_RAW.push(line)
+            const txt = fmtLogLine(line)
+            const d = document.createElement('div'); d.textContent = txt
+            if (txt.indexOf('✓') >= 0) d.className = 'ok'
+            if (txt.indexOf('✗') >= 0 || (line && line.k === 'log.failed')) d.className = 'err'
+            log.append(d)
+          }
+          log.scrollTop = log.scrollHeight
+        }
+        if (!pj.running) {
+          clearInterval(polling); polling = null
+          $('btnSync').disabled = false; $('btnFull').disabled = false; updateGroupBtn()
+          const failures = pj.results.filter(x => x.error)
+          if (pj.error) setStatus('err', pj.error)
+          else if (failures.length) setStatus('err', t('status.syncErrors')
+            .replace('{n}', failures.length).replace('{total}', pj.results.length) + ': ' + failures[0].error)
+          else {
+            const add = pj.results.filter(x => !x.error).reduce((s, x) => s + (x.added || 0), 0)
+            setStatus('ok', t('status.syncDone') + (add > 0 ? t('status.syncAdded').replace('{n}', add) : t('status.syncNone')))
+          }
+          await loadGames(true); await loadComments()
+          resolve(!pj.error && !failures.length)
+        }
+      } catch (error) {
+        clearInterval(polling); polling = null
+        $('btnSync').disabled = false; $('btnFull').disabled = false; updateGroupBtn()
+        setStatus('err', t(error.code === 'JOB_CHANGED' ? 'error.jobChanged' : 'status.progressFail')); resolve(false)
+      } finally {
+        busy = false
+      }
+    }, 600)
+  })
+}
+
+/* ═══════════ 标签页 ═══════════ */
+function switchTab(t) {
+  state.tab = t
+  for (const el of document.querySelectorAll('.tab')) {
+    el.classList.toggle('on', el.dataset.tab === t)
+    el.setAttribute('aria-selected', String(el.dataset.tab === t))
+  }
+  for (const s of ['list', 'notes', 'mgmt']) $('tab-' + s).classList.toggle('on', s === t)
+}
+
+/* ═══════════ 交互 ═══════════ */
+$('mood').onclick = e => {
+  const c = e.target.closest('.chip'); if (!c) return
+  ;[...$('mood').children].forEach(x => {
+    x.classList.toggle('on', x === c)
+    x.setAttribute('aria-pressed', String(x === c))
+  })
+  state.mood = c.dataset.m; renderAll(true)
+}
+$('sort').onchange = e => { state.sort = e.target.value; renderAll(true) }
+$('q').oninput = e => { state.q = e.target.value; renderAll(true) }
+$('dateFrom').onchange = e => { state.dateFrom = e.target.value; renderAll(true) }
+$('dateTo').onchange = e => { state.dateTo = e.target.value; renderAll(true) }
+$('dateClear').onclick = () => {
+  state.dateFrom = ''; state.dateTo = ''
+  $('dateFrom').value = ''; $('dateTo').value = ''
+  renderAll(true)
+}
+$('hideDefault').onchange = e => { state.hideDefault = e.target.checked; renderAll(true) }
+$('thr').onchange = e => {
+  const v = Math.max(2, Math.min(400, +e.target.value || 8))
+  e.target.value = v; state.thr = v
+  if (state.data) { state.data = buildData(state.data.meta); renderAll(true) }
+}
+$('btnSync').onclick = () => runSync(false)
+$('btnFull').onclick = () => { if (confirm(t('confirm.fullCrawl'))) runSync(true) }
+$('btnSyncGroup').onclick = () => {
+  const members = groupMembers()
+  if (!members.length) return
+  const base = members[0].group || members[0].baseName || members[0].name
+  if (members.length === 1) { runSync(false, members[0].name); return }
+    const tip = t('confirm.groupSync')
+      .replace('{group}', base).replace('{n}', members.length)
+      .replace('{list}', members.map((m) => t('confirm.item').replace('{region}', regionName(m.region, m.regionLabel)).replace('{n}', m.count)).join('\n'))
+  if (!confirm(tip)) return
+  runSync(false, null, false, members.map(m => m.name))
+}
+for (const el of document.querySelectorAll('.tab')) el.onclick = () => switchTab(el.dataset.tab)
+$('fnTabs').onkeydown = e => {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return
+  const tabs = [...document.querySelectorAll('.tab')]
+  const current = tabs.indexOf(document.activeElement)
+  if (current < 0) return
+  e.preventDefault()
+  const index = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1
+    : (current + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length
+  tabs[index].focus()
+  switchTab(tabs[index].dataset.tab)
+}
+
+function download(name, text) {
+  const blob = new Blob(['\ufeff' + text], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click()
+}
+const q = s => '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"'
+
+$('csv').onclick = () => {
+  const rows = filtered()
+    const head = [t('csv.floor'), t('csv.nick'), t('csv.uid'), t('csv.time'), t('csv.rating'),
+      t('csv.isTemplate'), t('csv.like'), t('csv.content'), t('csv.ip')]
+  const lines = [head.map(q).join(',')]
+  for (const r of rows) {
+    lines.push([
+      r.floor_id, (r.user_info && r.user_info.nickname) || '', (r.user_info && r.user_info.uid) || '',
+        fmtTime(r.created_at), r._rating === 'good' ? t('csv.good') : t('csv.bad'),
+        (r._tpl === 'df_good' || r._tpl === 'df_bad') ? t('csv.yes') : t('csv.no'),
+        r._like, r._text, r.client_ip,
+    ].map(q).join(','))
+  }
+  download(((state.games[state.gameIdx] && state.games[state.gameIdx].name) || t('csv.comments')) + '-' + t('csv.comments') + '.csv', lines.join('\r\n'))
+}
+$('noteMode').onchange = e => { state.noteMode = e.target.value; renderNotes() }
+
+  $('noteExport').onclick = async () => {
+    try { await noteStore.flushAll(); await loadNotes() } catch { return }
+    // 便签页显示的是 state.allNotes（跨游戏），导出也必须用同一份，
+    // 否则会出现「页面上有便签，导出却说没有」或者只导出一部分。
+    const all = state.allNotes || []
+    if (!all.length) { alert(t('alert.noNotes')); return }
+    // 便签是跨游戏的，所以一定要带「游戏 / 区服」两列，否则导出后分不清来源。
+    // 文件名也不该再用当前关卡名（会让人以为只导了这一个）。
+    const head = [t('csv.game'), t('csv.region'), t('csv.floor'), t('csv.nick'), t('csv.uid'),
+      t('csv.noteCreated'), t('csv.noteSaved'), t('csv.noteText'), t('csv.noteContent'), t('csv.ip')]
+    const lines = [head.map(q).join(',')]
+    for (const n of all) {
+      lines.push([noteGameName(n), noteRegionName(n), n.floorId, n.nickname, n.uid, fmtTime(n.createdAt),
+                  fmtTime(n.savedAt, true), n.text, n.content, n.clientIp].map(q).join(','))
+    }
+    const d = new Date()
+    const stamp = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0')
+    download(t('csv.notes') + '-' + stamp + '.csv', lines.join('\r\n'))
+  }
+
+/* ── 添加游戏 ── */
+let lookupTimer = null
+let lookupSeq = 0
+let lookupController = null
+function showPreview(info) {
+  const pv = $('preview')
+  if (!info || !info.ok) {
+    pv.classList.remove('show')
+    if ($('pvGroup')) $('pvGroup').textContent = ''
+    return
+  }
+  pv.classList.add('show')
+  $('pvName').textContent = info.name || t('pv.noName').replace('{id}', info.levelId)
+  $('pvSub').textContent = [
+    info.goodRate ? t('pv.goodRate').replace('{v}', info.goodRate) : '', info.playType || '',
+    info.hotScore ? t('pv.hot').replace('{v}', info.hotScore) : '', regionName(info.region, info.regionLabel),
+  ].filter(Boolean).join('　·　')
+  const img = $('pvImg')
+  if (info.cover) { img.src = info.cover; img.style.display = '' } else { img.removeAttribute('src'); img.style.display = 'none' }
+
+  // 自动把建议的组名填进下拉：有同名分组就直接选它，没有就选「（将新建）」那一项
+  // 用户自己动过分组下拉时（groupTouched）就不再覆盖他的选择
+  const suggest = info.baseName || info.name || ''
+  if (suggest) fillGroupSelect(suggest, !groupTouched)
+  updateGroupTip()
+}
+/* ── 添加对话框：国服 / 国际服 两套入口 ── */
+let addServer = 'cn'        // 'cn' | 'os'
+let addRegionOS = 'os_euro' // 国际服默认欧服
+let groupTouched = false    // 用户在分组下拉里手动选过没有（没选过就按关卡名自动对齐）
+
+function addInputEl() { return addServer === 'os' ? $('inInputOS') : $('inInputCN') }
+function addRegion() { return addServer === 'os' ? addRegionOS : $('inRegionCN').value }
+
+function selectAddServer(sv, region) {
+  addServer = sv === 'os' ? 'os' : 'cn'
+  for (const b of document.querySelectorAll('.svswitch .sv')) b.classList.toggle('on', b.dataset.sv === addServer)
+  $('svCN').style.display = addServer === 'cn' ? '' : 'none'
+  $('svOS').style.display = addServer === 'os' ? '' : 'none'
+  if (!region) return
+  if (addServer === 'os') {
+    const btns = [...document.querySelectorAll('.regions .rg')]
+    if (btns.some((b) => b.dataset.region === region)) {
+      addRegionOS = region
+      for (const b of btns) b.classList.toggle('on', b.dataset.region === addRegionOS)
+    }
+  } else if ([...$('inRegionCN').options].some((o) => o.value === region)) {
+    $('inRegionCN').value = region
+  }
+}
+
+for (const b of document.querySelectorAll('.svswitch .sv')) {
+  b.onclick = () => selectAddServer(b.dataset.sv)
+}
+for (const b of document.querySelectorAll('.regions .rg')) {
+  b.onclick = () => {
+    addRegionOS = b.dataset.region
+    for (const x of document.querySelectorAll('.regions .rg')) x.classList.toggle('on', x === b)
+    lookup()   // 换了区服立刻按新服再查一次
+  }
+}
+
+/* ── 分组：添加时显示并确认归到哪个组 ── */
+
+// 「分组」下拉：建议值 + 所有已有分组 + 新建
+// suggest = 建议的组名（一般就是关卡名）；force = 按建议强行对齐（用户还没手动选过时用）
+function fillGroupSelect(suggest, force) {
+  const sel = $('inGroupSel')
+  if (!sel) return
+  const prev = sel.value
+  sel.innerHTML = ''
+  const names = []
+  const sg = String(suggest || '').trim()
+  // 建议的名字放最前面：已有同名组就选它，没有就是「（将新建）」那一项
+  if (sg) names.push(sg)
+  for (const g of (state.groups || [])) if (!names.includes(g.group)) names.push(g.group)
+  for (const n of names) {
+    const hit = (state.groups || []).find((x) => x.group === n)
+    const o = document.createElement('option')
+    o.value = n
+    o.textContent = n + (hit ? t('add.groupExists').replace('{n}', hit.games.length) : t('add.groupNew'))
+    sel.append(o)
+  }
+  const oNew = document.createElement('option')
+  oNew.value = '__new__'
+  oNew.textContent = t('grp.new')
+  sel.append(oNew)
+
+  const has = (v) => [...sel.options].some((o) => o.value === v)
+  if (force && sg && has(sg)) sel.value = sg      // 自动对齐到同名分组（没有就落到「将新建」）
+  else if (prev && has(prev)) sel.value = prev    // 用户手动选过就尊重他的选择
+  else if (sg && has(sg)) sel.value = sg
+  else if (names.length) sel.value = names[0]
+
+  $('inGroupNew').value = ''
+  $('inGroupNew').style.display = 'none'
+}
+
+// 最终要用的组名
+function addGroupName() {
+  const v = $('inGroupSel').value
+  return v === '__new__' ? String($('inGroupNew').value || '').trim() : v
+}
+
+function updateGroupTip() {
+  const el = $('pvGroup')
+  if (!el) return
+  // 还没查到关卡时不显示，免得一打开对话框就冒出一句「将归入…」
+  if (!$('preview').classList.contains('show')) { el.textContent = ''; return }
+  const typed = addGroupName()
+  if (!typed) {
+    el.textContent = t('grp.needName')
+    return
+  }
+  const hit = (state.groups || []).find(g => g.group === typed)
+  el.textContent = hit
+    ? t('pv.groupExisting').replace('{group}', hit.group).replace('{n}', hit.games.length)
+      .replace('{regions}', hit.games.map(x => regionName(x.region, x.regionLabel)).join(t('unit.listSep')))
+    : t('pv.groupNew').replace('{group}', typed)
+}
+
+async function lookup() {
+  const seq = ++lookupSeq
+  if (lookupController) lookupController.abort()
+  const input = addInputEl().value.trim(); const msg = $('addMsg')
+  if (!input) { $('preview').classList.remove('show'); return }
+  const controller = lookupController = new AbortController()
+  msg.className = 'msg'; msg.textContent = ''
+  // 链接里带 region= 就自动切到对应分服/区服，省得手动选
+  const normalized = normalizeLevelInput(input)
+  const rm = normalized.match(/region=([a-z_0-9]+)/i)
+  if (rm) {
+    const region = rm[1].toLowerCase()
+    if (region.startsWith('os_')) selectAddServer('os', region)
+    else if (region.startsWith('cn_')) selectAddServer('cn', region)
+  } else if (/hoyolab\.com/i.test(normalized)) selectAddServer('os', 'os_asia')
+  else if (/miyoushe\.com/i.test(normalized)) selectAddServer('cn', 'cn_gf01')
+  // 自动切服后，要把链接带到新显示的输入框，否则预览成功却无法提交。
+  addInputEl().value = input
+  try {
+    const rg = addRegion()
+    const info = await (await fetch('/api/level-detail?input=' + encodeURIComponent(input)
+      + '&region=' + encodeURIComponent(rg), { signal: controller.signal })).json()
+    if (seq !== lookupSeq) return
+    if (info.ok && info.region) {
+      if (info.region.startsWith('os_')) selectAddServer('os', info.region)
+      else selectAddServer('cn', info.region)
+    }
+    showPreview(info)
+    if (info.ok && info.name && !$('inName').value.trim()) $('inName').placeholder = info.name
+    if (!info.ok) { msg.className = 'msg err'; msg.textContent = lookupErrorText(info); msg.title = info.error || '' }
+  } catch (e) {
+    if (seq !== lookupSeq || controller.signal.aborted) return
+    $('preview').classList.remove('show')
+    msg.className = 'msg err'; msg.textContent = lookupErrorText({code:'network',error:e.message}); msg.title = e.message
+  }
+}
+for (const id of ['inInputCN', 'inInputOS']) {
+  $(id).oninput = () => {
+    clearTimeout(lookupTimer); lookupSeq += 1
+    if (lookupController) lookupController.abort()
+    $('preview').classList.remove('show')
+    lookupTimer = setTimeout(lookup, 500)
+  }
+  $(id).onblur = () => { clearTimeout(lookupTimer); lookup() }
+}
+// 分组下拉：切到「新建」时露出输入框
+$('inGroupSel').onchange = () => {
+  groupTouched = true          // 用户自己动过，之后就不自动对齐了
+  const isNew = $('inGroupSel').value === '__new__'
+  $('inGroupNew').style.display = isNew ? '' : 'none'
+  if (isNew) setTimeout(() => $('inGroupNew').focus(), 30)
+  updateGroupTip()
+}
+$('inGroupNew').oninput = () => updateGroupTip()
+
+// 「查询」按钮：填了 ID / 链接后手动触发一次
+$('btnLookupCN').onclick = () => lookup()
+$('btnLookupOS').onclick = () => lookup()
+// 国服区服下拉改了 → 立刻按新区服重查（否则填了纯 id 再改区服不会有反应）
+$('inRegionCN').onchange = () => { if (addInputEl().value.trim()) lookup() }
+
+function renderCandidates(list) {
+  const box = $('searchList'); box.innerHTML = ''
+  if (!list.length) {
+    const d = document.createElement('div'); d.className = 'hint'
+    d.textContent = t('search.none')
+    box.append(d); return
+  }
+  for (const c of list) {
+    const row = document.createElement('div'); row.className = 'cand'
+    if (c.cover) { const im = document.createElement('img'); im.src = c.cover; im.alt = ''; row.append(im) }
+    const info = document.createElement('div')
+    const nm = document.createElement('div'); nm.className = 'cn'; nm.textContent = c.name
+    const sub = document.createElement('div'); sub.className = 'cs'
+    sub.textContent = [c.goodRate ? t('pv.goodRate').replace('{v}', c.goodRate) : '', c.playType || '',
+                       c.hotScore ? t('pv.hot').replace('{v}', c.hotScore) : '', 'id ' + c.levelId].filter(Boolean).join('　·　')
+    info.append(nm, sub)
+    if (c.postSubject) {
+      const ps = document.createElement('div'); ps.className = 'cs'
+      ps.textContent = t('search.source').replace('{subject}', c.postSubject.slice(0, 46)); info.append(ps)
+    }
+    row.append(info)
+    row.onclick = () => {
+      addInputEl().value = c.levelId
+      if (!$('inName').value.trim()) $('inName').value = c.name
+      showPreview({ ok: true, levelId: c.levelId, name: c.name, goodRate: c.goodRate,
+                    playType: c.playType, hotScore: c.hotScore, region: c.region, cover: c.cover })
+      box.innerHTML = ''
+      $('addMsg').className = 'msg ok'
+      $('addMsg').textContent = t('search.selected').replace('{name}', c.name)
+    }
+    box.append(row)
+  }
+}
+async function doSearch() {
+  const name = $('inSearch').value.trim(); const msg = $('addMsg')
+  msg.className = 'msg'; msg.textContent = ''
+  if (!name) { msg.className = 'msg err'; msg.textContent = t('search.needName'); return }
+  $('searchList').innerHTML = ''
+  msg.textContent = t('search.busy')
+  const btn = $('btnSearch'); btn.disabled = true
+  try {
+    const r = await (await fetch('/api/search-level?name=' + encodeURIComponent(name)
+      + '&region=' + encodeURIComponent(addRegion()))).json()
+    if (!r.ok) { msg.className = 'msg err'; msg.textContent = lookupErrorText(r); msg.title = r.error || ''; return }
+    msg.className = 'msg'
+    msg.textContent = r.list.length ? t('search.found').replace('{n}', r.list.length) : ''
+    renderCandidates(r.list)
+  } catch (e) { msg.className = 'msg err'; msg.textContent = t('search.failed').replace('{msg}', e.message) }
+  finally { btn.disabled = false }
+}
+$('btnSearch').onclick = doSearch
+$('inSearch').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); doSearch() } }
+
+$('btnAdd').onclick = () => {
+  clearTimeout(lookupTimer); lookupSeq += 1
+  if (lookupController) lookupController.abort()
+  $('addMsg').className = 'msg'
+  $('addMsg').textContent = ''
+  $('inInputCN').value = ''; $('inInputOS').value = ''
+  $('inName').value = ''; $('inName').placeholder = t('add.namePh')
+  groupTouched = false
+  fillGroupSelect('')
+  $('inSearch').value = ''; $('searchList').innerHTML = ''
+  $('inRegionCN').value = 'cn_gf01'
+  addRegionOS = 'os_euro'
+  for (const x of document.querySelectorAll('.regions .rg')) x.classList.toggle('on', x.dataset.region === 'os_euro')
+  const defaultServer = state.lang === 'zh-cn' ? 'cn' : 'os'
+  selectAddServer(defaultServer)
+  updateGroupTip()
+  $('preview').classList.remove('show')
+  $('dlgAdd').showModal()
+  setTimeout(() => (defaultServer === 'cn' ? $('inSearch') : $('inInputOS')).focus(), 50)
+}
+$('dlgAdd').addEventListener('close', () => {
+  clearTimeout(lookupTimer); lookupSeq += 1
+  if (lookupController) lookupController.abort()
+})
+$('addCancel').onclick = () => $('dlgAdd').close()
+let addingGame = false
+$('addOk').onclick = async () => {
+  const msg = $('addMsg')
+  if (addingGame) return
+  if (polling || syncStarting) { msg.className = 'msg err'; msg.textContent = t('error.syncBusy'); return }
+  const input = addInputEl().value.trim(), name = $('inName').value.trim()
+  if (!input) { msg.className = 'msg err'; msg.textContent = t('add.needInput'); return }
+  addingGame = true; $('addOk').disabled = true; $('btnAdd').disabled = true
+  try {
+    msg.className = 'msg'; msg.textContent = t('add.busy')
+    const j = await postJson('/api/add', { name, input, region: addRegion(), group: addGroupName() })
+    if (!j.ok) { msg.className = 'msg err'; msg.textContent = lookupErrorText(j); msg.title = j.error || ''; return }
+    await loadGames(true)
+    const index = state.games.findIndex(g => g.name === j.name)
+    if (index >= 0) { state.gameIdx = index; syncGameSelectLabel(); renderGameSelectPanel() }
+    $('dlgAdd').close()
+    await runSync(false, j.name)
+  } catch (error) { msg.className = 'msg err'; msg.textContent = t('error.request') + ': ' + error.message; setStatus('err', msg.textContent) }
+  finally { addingGame = false; $('addOk').disabled = false; $('btnAdd').disabled = false }
+}
+
+/* ── 说明 / 常驻 ── */
+$('btnHelp').onclick = () => $('dlgHelp').showModal()
+$('btnHelp2').onclick = () => $('dlgHelp').showModal()
+$('helpClose').onclick = () => $('dlgHelp').close()
+$('btnStay').onclick = async () => {
+  const cur = await (await fetch('/api/life')).json()
+  const j = await (await fetch('/api/autoclose', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ on: !cur.autoClose }),
+  })).json()
+  state.autoClose = !!j.autoClose
+  renderStay()
+  setStatus('ok', t(j.autoClose ? 'status.stayOn' : 'status.stayOff'))
+}
+
+/* ── 心跳：关掉网页后让服务自己退出 ──
+ * 注意：**必须开机立刻 ping 一次**，不能只靠每 20 秒的定时器。
+ * 因为按 F5 刷新时，旧页面会发 /api/bye，服务端给 3 秒宽限期，
+ * 等「新页面的 ping」来取消退出。如果第一次 ping 要等 20 秒，
+ * 宽限期早就过了 —— 刷一下页面服务就自己退了。
+ */
+const ping = () => { fetch('/api/ping', { method: 'POST' }).catch(() => {}) }
+ping()                                   // 先把刚加载的页面登记成「活着」
+setInterval(ping, 20000)
+window.addEventListener('pagehide', () => {
+  try { navigator.sendBeacon('/api/bye', '{}') } catch { /* 忽略 */ }
+})
+
+/* ── 自绘日期选择器 ──
+   原生 <input type="date"> 弹出来的日历用的是【浏览器 UI 语言】，
+   页面就算切成韩文，日历还是「2026年10月 / 一二三四五六日 / 清除 / 今天」。
+   所以这里把它换成 type=text，自己画一份，月份、星期、按钮全部跟着界面语言走
+   （用 Intl.DateTimeFormat，不需要额外翻译）。 */
+let dpEl = null, dpTarget = null, dpYM = null
+const dpPad = (n) => String(n).padStart(2, '0')
+const dpFmt = (d) => d.getFullYear() + '-' + dpPad(d.getMonth() + 1) + '-' + dpPad(d.getDate())
+const dpLoc = () => state.lang || 'zh-cn'
+
+function dpHide() { if (dpEl) dpEl.hidden = true; dpTarget = null }
+
+function dpBuild() {
+  if (dpEl) return
+  dpEl = document.createElement('div')
+  dpEl.className = 'dp'
+  dpEl.hidden = true
+  dpEl.addEventListener('mousedown', (e) => e.preventDefault())
+  document.body.append(dpEl)
+  document.addEventListener('click', (e) => {
+    if (dpEl.hidden) return
+    if (dpEl.contains(e.target)) return
+    if (dpTarget === e.target) return
+    dpHide()
+  })
+  window.addEventListener('resize', dpHide)
+}
+
+function dpShow(input) {
+  dpBuild()
+  dpTarget = input
+  const base = input.value ? new Date(input.value + 'T00:00:00') : new Date()
+  dpYM = { y: base.getFullYear(), m: base.getMonth() }
+  dpRender()
+  const r = input.getBoundingClientRect()
+  dpEl.hidden = false
+  const w = dpEl.offsetWidth || 252
+  dpEl.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px'
+  dpEl.style.top = (r.bottom + 6) + 'px'
+}
+
+function dpRender() {
+  if (!dpEl || !dpYM) return
+  const loc = dpLoc()
+  const y = dpYM.y, m = dpYM.m
+  const cur = dpTarget && dpTarget.value ? dpTarget.value : ''
+  const today = dpFmt(new Date())
+  const head = new Intl.DateTimeFormat(loc, { year: 'numeric', month: 'long' }).format(new Date(y, m, 1))
+  const wd = new Intl.DateTimeFormat(loc, { weekday: 'short' })
+  const names = Array.from({ length: 7 }, (_, i) => wd.format(new Date(2024, 0, 7 + i)))  // 周日开头
+  const startPad = new Date(y, m, 1).getDay()
+  const dim = new Date(y, m + 1, 0).getDate()
+
+  const cells = []
+  for (let i = startPad; i > 0; i--) {
+    const d = new Date(y, m, 1 - i)
+    cells.push('<i class="mute" data-d="' + dpFmt(d) + '">' + d.getDate() + '</i>')
+  }
+  for (let d = 1; d <= dim; d++) {
+    const ds = y + '-' + dpPad(m + 1) + '-' + dpPad(d)
+    const cls = ds === cur ? 'on' : (ds === today ? 'td' : '')
+    cells.push('<i class="' + cls + '" data-d="' + ds + '">' + d + '</i>')
+  }
+  const tail = (7 - ((startPad + dim) % 7)) % 7
+  for (let i = 1; i <= tail; i++) {
+    const d = new Date(y, m + 1, i)
+    cells.push('<i class="mute" data-d="' + dpFmt(d) + '">' + d.getDate() + '</i>')
+  }
+
+  dpEl.innerHTML =
+    '<div class="dph">' +
+      '<button data-nav="-12">«</button><button data-nav="-1">‹</button>' +
+      '<b>' + head + '</b>' +
+      '<button data-nav="1">›</button><button data-nav="12">»</button>' +
+    '</div>' +
+    '<div class="dpg">' + names.map((n) => '<span>' + n + '</span>').join('') + cells.join('') + '</div>' +
+    '<div class="dpf"><button data-act="clear">' + t('filter.clear') + '</button>' +
+      '<button data-act="today">' + t('date.today') + '</button></div>'
+
+  dpEl.querySelectorAll('[data-nav]').forEach((b) => {
+    b.onclick = () => {
+      const d = new Date(dpYM.y, dpYM.m + Number(b.dataset.nav), 1)
+      dpYM = { y: d.getFullYear(), m: d.getMonth() }
+      dpRender()
+    }
+  })
+  dpEl.querySelectorAll('[data-act]').forEach((b) => {
+    b.onclick = () => {
+      if (!dpTarget) return
+      dpTarget.value = b.dataset.act === 'today' ? today : ''
+      dpTarget.dispatchEvent(new Event('change'))
+      dpHide()
+    }
+  })
+  dpEl.querySelectorAll('[data-d]').forEach((cell) => {
+    cell.onclick = () => {
+      if (!dpTarget) return
+      dpTarget.value = cell.dataset.d
+      dpTarget.dispatchEvent(new Event('change'))
+      dpHide()
+    }
+  })
+}
+
+function initDatePickers() {
+  for (const id of ['dateFrom', 'dateTo']) {
+    const el = $(id)
+    if (!el) continue
+    el.type = 'text'          // 关掉浏览器原生日历
+    el.readOnly = true
+    el.placeholder = 'YYYY-MM-DD'
+    el.style.cursor = 'pointer'
+    el.onclick = () => (dpTarget === el && dpEl && !dpEl.hidden ? dpHide() : dpShow(el))
+  }
+}
+
+// Report failed management requests without leaving rejected promises behind.
+for (const id of ['gpOne', 'gpDissolve', 'gpAll', 'btnStay']) {
+  const handler = $(id).onclick
+  $(id).onclick = async (...args) => { try { await handler(...args) } catch (error) {
+    const text = t('error.request') + ': ' + error.message
+    setStatus('err', text)
+    if ($('dlgGroup').open) { $('gpMsg').className = 'msg err'; $('gpMsg').textContent = text }
+  } }
+}
+
+/* ═══════════ 启动 ═══════════ */
+// 长语言文案或工具栏换行时，让评论定位避开实际头部高度。
+if (typeof ResizeObserver !== 'undefined') {
+  new ResizeObserver(entries => {
+    document.documentElement.style.setProperty('--header-height', Math.ceil(entries[0].target.getBoundingClientRect().height) + 'px')
+  }).observe(document.querySelector('header'))
+}
+fetch('/api/life').then(r => r.json()).then(j => {
+  state.autoClose = !!j.autoClose
+  renderStay()
+    ? t('btn.stayAuto')
+    : t('btn.stayAlways')
+}).catch(() => {})
+
+;(async () => {
+  initLang()                 // 先把语言下拉和静态界面文字准备好
+  initDatePickers()          // 日期框换成自绘日历（原生日历的语言改不了）
+  // 首次加载偶尔会赶在本地服务刚起来的那一刻，请求失败一次就白屏，
+  // 这里重试几次再认输。
+  let loaded = false
+  for (let i = 0; i < 4 && !loaded; i++) {
+    try { await loadGames(false); loaded = true }
+    catch (e) {
+      if (i === 3) { setStatus('err', t('status.loadFail')); return }
+      await new Promise((r) => setTimeout(r, 300 * (i + 1)))
+    }
+  }
+  await loadComments()
+  try {
+    const life = await (await fetch('/api/life')).json()
+    dataLocationInfo = life
+    renderDataLocation()
+  } catch { /* 忽略 */ }
+  setStatus('', t('status.ready'))
+})()
+</script>
+<script src="/onboarding.js"></script>
+<script src="/batch-add.js"></script>
+</body>
+</html>
