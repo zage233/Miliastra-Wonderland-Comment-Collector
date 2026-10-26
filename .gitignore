@@ -1,0 +1,11 @@
+# Local reviews, notes, registrations, credentials and network settings
+/data/
+/config/*
+!/config/.gitkeep
+/games.json
+/proxy.txt
+/cookie.txt
+*.log
+*.tmp
+/release/
+
