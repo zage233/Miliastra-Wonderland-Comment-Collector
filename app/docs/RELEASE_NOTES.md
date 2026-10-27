@@ -1,10 +1,11 @@
-# Release notes · 2026-10-27
+# Release notes · 2026-10-28
 
 [简体中文](../../README.md) · [English](../../README.en.md) · [交付核验与上传指南 / Delivery and upload guide](RELEASE-CHECK.md)
 
 ## 本次更新
 
-- 将“未读”改为“更新评论／更新回复”。新增到本地的内容会持续保留更新标记，查看不会自动清除；重复同步只累积，手动清除后重新累计。本次同步新增数单独显示。
+- 重开或刷新页面后，各关卡首次完整成功同步会自动清除上一轮更新标记，只保留本轮新增；同次打开的后续同步继续累积。失败或回复未取完时保留旧标记，重试成功不会误清本轮已经收到的新回复。
+- 将“清除更新标记”移到计数旁，以强调色和可清除数量突出显示；空状态和同步期间禁用。本次同步新增数继续单独显示。
 - 默认启用“更新优先”，可选“只看更新”。与搜索、评价、默认模板、日期及排序一起使用；关闭更新优先后恢复原有排序。
 - 移除直接回复主评论的重复标签。回复对象、作者和正文分开显示，真实嵌套结构逐层缩进，悬浮或键盘聚焦时高亮回复对象在本串的发言。
 - 修复“过滤默认”选中背景覆盖皮肤的问题，统一十套皮肤的普通、选中、悬浮与焦点状态，并支持自定义悬浮颜色。
@@ -16,13 +17,14 @@
 1. 停止同步和便签编辑，备份自己的 `config/` 与 `data/`。
 2. 将新交付包解压到新文件夹，先按上传指南运行文件校验。不要在旧目录上反复混合覆盖。
 3. 需要保留原有收集内容时，在核验之后、服务停止状态下将备份的 `config/` 与 `data/` 放入新目录。
-4. 使用英文 EXE 启动，浏览器按 Ctrl+Shift+R。旧版更新标记兼容保留，不需要迁移评论文件。
+4. 重启收集器后台，再使用英文 EXE 启动，浏览器按 Ctrl+Shift+R。旧评论格式兼容，不需要迁移评论文件。
 
 首次使用仍需要 Node.js 18 或更新版本；EXE 是 Windows 启动器，不是内置 Node.js 的单文件程序。教程记录、外观偏好保存在浏览器，不随交付包传播。同一浏览器以前访问过相同地址时，教程不会因为解压了新文件夹而自动重置，可点“新手引导”重新打开。
 
 ## Changes in this delivery
 
-- Update markers replace the reading-state terminology. Viewing does not clear them; repeated sync accumulates newly saved comments/replies until explicitly cleared. Per-sync additions are reported separately.
+- On reopening or reloading, each entry's first fully successful sync automatically rolls over previous-round update markers. Later syncs accumulate. Failures or incomplete replies preserve older markers, and retries retain additions already saved in the current session.
+- Clear update markers now sits next to the totals, with an accent background and count; it is disabled when empty or syncing. Restart the backend and refresh after updating. Per-sync additions remain separate.
 - Updates-first and updates-only views combine with existing filters and sorting. Reply rows show actual nesting and addressee highlights without inventing exact parent links from user-only references.
 - Hide-default styling now follows all ten themes and custom hover settings. The header hides while scrolling down and returns on upward scroll, with interaction locks and reduced-motion support.
 - Fifteen interface languages, twelve background effects, cross-server overviews, local replies, notes and CSV export remain available.

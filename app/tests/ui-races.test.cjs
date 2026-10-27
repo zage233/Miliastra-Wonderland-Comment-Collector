@@ -41,7 +41,7 @@ test('登记列表重排后保持原选择，旧刷新响应不会覆盖新列�
 })
 test('切换到零评论关卡后，前一关慢响应不会把旧评论写回界面',async()=>{
   let resolveOld;const c={state:{games:[{name:'A',count:1},{name:'Empty',count:0}],gameIdx:0,loadSeq:0,data:null},
-    fetch:()=>new Promise(resolve=>{resolveOld=resolve}),buildData:j=>j,renderAll(){},loadNotes:async()=>{},setStatus(){},t:k=>k,setTimeout}
+    fetch:()=>new Promise(resolve=>{resolveOld=resolve}),updateRounds:{remember(){}},buildData:j=>j,renderAll(){},loadNotes:async()=>{},setStatus(){},t:k=>k,setTimeout}
   vm.createContext(c);const start=html.indexOf('async function loadComments()');vm.runInContext(html.slice(start,html.indexOf('function renderMgmt()',start)),c)
   const old=vm.runInContext('loadComments()',c);c.state.gameIdx=1;await vm.runInContext('loadComments()',c)
   resolveOld({ok:true,json:async()=>({name:'A',replies:[{}]})});await old
@@ -56,3 +56,4 @@ test('快速切关卡时旧便签请求不会覆盖当前关卡的星标状态',
   resolveA({ok:true,json:async()=>({notes:[{replyId:'A-note'}]})});await old
   assert.deepEqual(Array.from(c.state.noteKeys),['B-note'])
 })
+

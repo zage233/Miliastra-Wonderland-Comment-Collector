@@ -1,6 +1,6 @@
 # GitHub 交付核验与上传指南 / Delivery and upload guide
 
-交付日期：2026-10-27。项目英文名：**Miliastra Wonderland Comment Collector**。
+交付日期：2026-10-28。项目英文名：**Miliastra Wonderland Comment Collector**。
 
 ## 交付文件是什么
 
@@ -43,7 +43,7 @@ node --test app/tests/*.test.cjs
 
 ## 此交付的验证记录
 
-- 完整回归：**131 项测试**，最终发布副本和交付 ZIP 解压目录均通过。
+- 完整回归：**135 项测试**，最终发布副本和交付 ZIP 解压目录均通过。
 - 自动覆盖：代理回退与错误分类、导入与分组、跨服总览、评论及子回复分页、更新标记保留／清除、搜索筛选排序、便签保存竞争、删除锁、异常输入、导出安全、本地接口保护、首次教程、外观配置和文件完整性。
 - 浏览器组合检查：搜索＋评价＋更新筛选，开关更新优先恢复排序，分组同步期间编辑便签，管理表展开收起列宽稳定，整组清除标记后恢复全部评论，十套过滤默认配色，自定义悬浮色，十五种相关控件文案。
 - 阅读体验：桌面和 390px 窄屏下，下滑隐藏／上滑恢复顶部栏；展开选择器时不隐藏。子回复只在有对象时显示对象标签，真实嵌套缩进，关系悬浮高亮；窄屏无横向溢出。
@@ -61,9 +61,11 @@ Extract the complete delivery, install Node.js 18+, then run both commands above
 
 Upload the folder's **contents**, preserving `app/` and both dotfiles. Web uploads do not remove old files. Download the repository ZIP after upload and repeat verification to detect missing, changed or leftover files. Use the complete ZIP as a Release asset; the EXE alone is not a standalone installation.
 
-The delivery gate is 131 passing tests from the final folder and extracted ZIP, matching static hashes and clean user-data directories. Deterministic local tests do not certify every live proxy, future remote API behavior, arbitrary browser translations or exact reply links absent from upstream data.
+The delivery gate is 135 passing tests from the final folder and extracted ZIP, matching static hashes and clean user-data directories. Deterministic local tests do not certify every live proxy, future remote API behavior, arbitrary browser translations or exact reply links absent from upstream data.
 
 版本说明与校验清单已归入 app/docs/。若仓库根目录还留有旧版 RELEASE_NOTES.md 和 SHA256SUMS.txt，请在上传新目录后删除这两个旧位置的文件；网页上传不会自动移动或删除它们。README 和 LICENSE 保留根目录，以便 GitHub 展示首页与识别许可证。
 
 Release notes and the checksum manifest now live under app/docs/. If updating an existing repository, remove the two obsolete root-level copies after uploading; a web upload will not move or delete them automatically.
 
+
+本次新增核验：每页／每关卡首次成功同步自动换轮；部分失败保留旧标记，本轮部分新增在重试后仍保留；同组成功与失败分别处理；旧后台协议提示重启；手动清除按钮的数量、强调色与同步禁用状态。浏览器已验证同次打开累计、关闭重开后首次同步及手动清除。

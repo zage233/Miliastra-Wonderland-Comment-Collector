@@ -150,6 +150,12 @@
   .unread-control{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;font-size:12px;color:var(--text);cursor:pointer}
   .unread-control:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 15%,var(--panel))}
   .unread-control input{margin:0;accent-color:var(--accent)}
+  .update-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto;max-width:100%}
+  .update-tools .new-summary{margin-left:0}
+  .update-tools #markRead{min-height:34px;padding:7px 12px;font-size:12px;font-weight:650;white-space:normal}
+  .update-tools.has-updates #markRead:not(:disabled){background:var(--accent);color:var(--bg);border:1px solid var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 20%,transparent)}
+  .update-tools #markRead:disabled{background:var(--panel);color:var(--dim);opacity:.5;box-shadow:none;cursor:default}
+  @media(max-width:600px){.update-tools{margin-left:0;width:100%}}
   .new-summary{margin-left:auto;display:flex;align-items:center;gap:8px;color:var(--text);border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--panel));border-radius:9px;padding:7px 12px;font-size:12px;font-weight:650;font-variant-numeric:tabular-nums}
   .new-summary:before,.new-badge:before{content:'';display:inline-block;width:6px;height:6px;background:currentColor;border-radius:50%;margin-right:6px}
   .new-badge{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:700;padding:3px 9px}
@@ -624,6 +630,7 @@ body.onboard-active .onboard-target{outline:2px solid #ffd166!important;outline-
     </label>
 <label class="unread-control"><input type="checkbox" id="pinUnread" checked><span id="pinUnreadLabel">更新优先</span></label>
     <label class="unread-control"><input type="checkbox" id="onlyUnread"><span id="onlyUnreadLabel">只看更新</span></label>
+    <div class="update-tools" id="updateTools"><span id="newSummary" class="new-summary" role="status" aria-live="polite"></span><button id="markRead" type="button"></button></div>
     </div>
     
     <div class="filter-group filter-dates">
@@ -635,7 +642,6 @@ body.onboard-active .onboard-target{outline:2px solid #ffd166!important;outline-
     </div>
     <div class="filter-group filter-actions">
     <button id="csv" title="按当前筛选结果导出 CSV">导出</button>
-    <button id="markRead" type="button"></button>
     <button id="btnHelp" title="各项功能说明">? 说明</button>
     </div>
   </div>
@@ -1055,6 +1061,18 @@ const state = {
 }
 const $ = id => document.getElementById(id)
 
+function createUpdateRounds() {
+  const entries=new Map(),key=g=>String(g.region||'')+'|'+String(g.levelId||g.name)
+  return {
+    has:g=>entries.has(key(g)),needs:g=>!entries.get(key(g))?.done,
+    remember(g,raw){if(!entries.has(key(g)))entries.set(key(g),{done:false,baseline:Object.fromEntries(['comments','subReplies','parents'].map(k=>[k,(Array.isArray(raw?.unread?.[k])?raw.unread[k]:[]).map(String)]))})},
+    baseline:g=>entries.get(key(g))?.baseline,
+    finish(g){const entry=entries.get(key(g));if(entry)entry.done=true},
+    cleared(g){entries.set(key(g),{done:true,baseline:{comments:[],subReplies:[],parents:[]}})},
+  }
+}
+const updateRounds=createUpdateRounds()
+
 const noteStore = window.QXCreateNoteStore({
   post: async (url, body) => { const result = await postJson(url, body); if (!result.ok) throw new Error(lookupErrorText(result)); return result },
   onError: error => setStatus('err', t('error.noteSave') + ': ' + error.message),
@@ -1414,11 +1432,10 @@ function renderStats() {
     const written = all.filter(r => !r._tpl || r._tpl === 'df_mixed')
   const official = g && g.meta.levelInfo && g.meta.levelInfo.goodRate
   const box = $('stats'); box.innerHTML = ''
-  const mark = $('markRead')
-  if (mark) { mark.textContent = t('new.markRead'); mark.disabled = !all.some(r => r._isNew || r._newSubCount) }
-  let summary = $('newSummary')
-  if (!summary) { summary = document.createElement('div'); summary.id = 'newSummary'; summary.className = 'new-summary'; document.querySelector('.filter-moods').append(summary) }
   const newCount = all.filter(r => r._isNew).length, newSubCount = all.reduce((sum, r) => sum + (r._newSubCount || 0), 0)
+  const count=newCount+newSubCount,mark=$('markRead'),summary=$('newSummary')
+  if(mark){mark.textContent=t('new.markRead')+(count?' ('+count+')':'');mark.disabled=!count||(typeof polling!=='undefined'&&!!polling)||(typeof syncStarting!=='undefined'&&syncStarting);mark.title=t('new.markReadHint')+'\n'+($('gselLabel')?.textContent||'')}
+  $('updateTools')?.classList.toggle('has-updates',!!count)
   summary.textContent = (newCount || newSubCount) ? t('new.summary').replace('{n}', newCount).replace('{s}', newSubCount) : ''
   const mk = (v, l, color) => {
     const d = document.createElement('div'); d.className = 'stat'
@@ -2072,7 +2089,8 @@ async function loadComments() {
     try {
       const r = await fetch('/api/comments?name=' + encodeURIComponent(g.name))
       if (!r.ok) throw new Error('HTTP ' + r.status)
-      const data = buildData(await r.json())
+      const raw=await r.json();updateRounds.remember(g,raw)
+      const data = buildData(raw)
       if (seq !== state.loadSeq) return        // 已经切走了，这份结果作废
       state.data = data
       await loadNotes()
@@ -2100,6 +2118,7 @@ async function loadGroupComments(seq) {
       if (!response.ok) throw new Error(g.name + ': HTTP ' + response.status)
       const raw = await response.json()
       if (!Array.isArray(raw.replies)) throw new Error(g.name)
+      updateRounds.remember(g,raw)
       return raw.replies.map(r => ({ ...r, _gameName: g.name, _region: g.region, _regionLabel: g.regionLabel,
         _unreadComment: (raw.unread?.comments || []).includes(String(r.reply_id || r.floor_id)), _unreadSubIds: raw.unread?.subReplies || [] }))
     }))
@@ -2441,15 +2460,30 @@ async function runSync(full, name, all, names) {
   }
   let j
   syncStarting = true
-  try { j = await postJson('/api/sync', body) }
+  const syncTargets=state.games.filter(g=>body.name?g.name===body.name:Array.isArray(body.names)?body.names.includes(g.name):true).map(g=>({...g}))
+  try {
+    const baselines=Object.create(null)
+    for(const target of syncTargets)if(updateRounds.needs(target)){
+      if(!updateRounds.has(target)){
+        let raw={}
+        if(target.count){const response=await fetch('/api/comments?name='+encodeURIComponent(target.name));if(!response.ok)throw Error('HTTP '+response.status);raw=await response.json();if(!Array.isArray(raw.replies))throw Error(t('status.loadFail'))}
+        updateRounds.remember(target,raw)
+      }
+      baselines[target.name]=updateRounds.baseline(target)
+    }
+    if(Object.keys(baselines).length)body.markerBaselines=baselines
+    j = await postJson('/api/sync', body)
+  }
   catch (error) { setStatus('err', t('error.request') + ': ' + error.message); return false }
   finally { syncStarting = false }
   if (!j.ok) { setStatus('err', lookupErrorText(j) || t('status.startFail')); return false }
+  const markerProtocolMissing=!!body.markerBaselines&&!j.markerRounds
 
   $('syncPanel').classList.add('show')
   $('log').textContent = ''; LOG_RAW.length = 0
   $('btnSync').disabled = true; $('btnFull').disabled = true
   $('btnSyncGroup').disabled = true; $('btnGroupFull').disabled = true
+  $('markRead').disabled=true
   setStatus('run', t(full ? 'status.syncingFull' : 'status.syncing'))
 
   return await new Promise((resolve) => {
@@ -2480,20 +2514,22 @@ async function runSync(full, name, all, names) {
           clearInterval(polling); polling = null
           $('btnSync').disabled = false; $('btnFull').disabled = false; updateGroupBtn()
           const failures = pj.results.filter(x => x.error || x.subReplyFailed)
+          for(const result of pj.results)if(result.markerRoundApplied&&!result.error&&!result.subReplyFailed){const target=syncTargets.find(g=>g.name===result.name);if(target)updateRounds.finish(target)}
           if (pj.error) setStatus('err', pj.error)
           else if (failures.length) setStatus('err', t('status.syncErrors')
             .replace('{n}', failures.length).replace('{total}', pj.results.length) + ': ' + (failures[0].error || t('log.subSummary').replace('{n}', failures[0].addedSubReplies || 0).replace('{failed}', failures[0].subReplyFailed)))
           else {
             const add = pj.results.filter(x => !x.error).reduce((s, x) => s + (x.added || 0), 0)
             const subs = pj.results.reduce((sum, x) => sum + (x.addedSubReplies || 0), 0)
-            setStatus('ok', t('status.syncDone') + ' · ' + t('new.syncSummary').replace('{n}', add).replace('{s}', subs))
+            setStatus(markerProtocolMissing?'err':'ok',markerProtocolMissing?t('new.restartRequired'):t('status.syncDone') + ' · ' + t('new.syncSummary').replace('{n}', add).replace('{s}', subs))
           }
           await loadGames(true); await loadComments()
-          resolve(!pj.error && !failures.length)
+          resolve(!pj.error && !failures.length&&!markerProtocolMissing)
         }
       } catch (error) {
         clearInterval(polling); polling = null
         $('btnSync').disabled = false; $('btnFull').disabled = false; updateGroupBtn()
+        renderStats()
         setStatus('err', t(error.code === 'JOB_CHANGED' ? 'error.jobChanged' : 'status.progressFail')); resolve(false)
       } finally {
         busy = false
@@ -2603,6 +2639,7 @@ $('markRead').onclick = async () => {
   try {
     const result = await postJson('/api/mark-read', { names: members.map(g => g.name) })
     if (!result.ok) throw new Error(lookupErrorText(result))
+    for(const member of members)updateRounds.cleared(member)
     await loadComments()
   } catch (error) { setStatus('err', t('error.request') + ': ' + error.message) }
 }

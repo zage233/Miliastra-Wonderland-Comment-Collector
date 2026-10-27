@@ -134,7 +134,7 @@ test('真实本地服务：导入、同步、便签、分组、异常输入及�
     const d=(await call('/api/add',{input:'444444444',region:'os_asia',group:'Overview'})).data
     const e=(await call('/api/add',{input:'555555555',region:'os_euro',group:'Overview'})).data
     await sync({names:[d.name,e.name]})
-    const front={state:{games:[],gameIdx:0,groupOverview:'Overview',selectOpen:new Set(),loadSeq:0,thr:8},gameLoadSeq:0,
+    const front={state:{games:[],gameIdx:0,groupOverview:'Overview',selectOpen:new Set(),loadSeq:0,thr:8},gameLoadSeq:0,updateRounds:{remember(){}},
       fetch:url=>fetch(base+url),groupOf:g=>g.group||g.baseName||g.name,norm:s=>s,classifyKnown:()=>null,t:k=>k,
       syncGameSelectLabel(){},renderGameSelectPanel(){},updateGroupBtn(){},renderMgmt(){},renderAll(){},loadNotes:async()=>{},regionName:r=>r,
       lookupErrorText:()=> 'error',setStatus(){},setTimeout,confirm:()=>true,chosenGroup:()=>front.nextGroup,
@@ -187,4 +187,5 @@ test('真实本地服务：导入、同步、便签、分组、异常输入及�
     assert.equal((await call('/api/notes',{name:a.name,note:{replyId:'reply-3',text:'After delete'}})).data.ok,false)
   })
 })
+
 

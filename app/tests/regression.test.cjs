@@ -302,7 +302,7 @@ test('翻译没有空文案或意外中文残留，评论编号不再译为建�
 test('好评率回退到本地计算时，使用本地标签而非官方标签', () => {
   for(const official of [null,'84.5%']){
     const nodes={}
-    const element=()=>({children:[],style:{},append(...children){this.children.push(...children)},querySelector(){return this.body||(this.body=element())}})
+    const element=()=>({children:[],style:{},classList:{toggle(){}},append(...children){this.children.push(...children)},querySelector(){return this.body||(this.body=element())}})
     const c={state:{lang:'en-us',thr:8,data:{meta:{levelInfo:{goodRate:official}},replies:[{_rating:'good',_tpl:null}],templates:[]}},
       $:id=>nodes[id]||=(element()),document:{createElement:element},t:key=>key}
     vm.createContext(c)
@@ -464,3 +464,4 @@ test('隐藏启动保留关页自动退出，刷新后新心跳会阻止退出',
     assert.equal(exitCode,refreshed?null:0)
   }
 })
+

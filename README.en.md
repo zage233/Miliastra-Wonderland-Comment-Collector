@@ -87,7 +87,7 @@ Normal sync uses the official `parent_reply_id` reply endpoint for the correspon
 
 Reply threads are collapsed by default. Their summary shows the reply count and new-reply indicators; click to expand/collapse. Nested data and reply targets are displayed when returned by the service. Loaded reply bodies are stored in `comments.json` and can be opened offline; only the individual refresh button reconnects. CSV includes reply count and loaded reply text.
 
-Newly collected parent comments and replies are highlighted, and sync reports both counts. Update markers persist in each entry's comment file across restarts. **Clear update markers** clears markers for the selected entry or overview group without deleting comments or notes. “New” means first collected locally, not necessarily recently posted; first imports mark all imported content as new.
+Newly collected parent comments and replies are highlighted, and sync reports both counts. Update markers persist in each entry's comment file; after reopening, the first complete sync starts a new round automatically. **Clear update markers** clears markers for the selected entry or overview group without deleting comments or notes. “New” means first collected locally, not necessarily recently posted; first imports mark all imported content as new.
 
 The **Appearance** tab offers 10 themes: Default night, Whale in the stars, Fresh woodland, Clear daylight, Warm lanterns, Glacial water, Sakura blush, Washi journal, Violet lightning and Golden stone. Click a palette preview card to switch. Themes vary their backgrounds, borders and corner styles; five colors remain customizable.
 
@@ -169,7 +169,9 @@ Use collected public content responsibly and respect the platform's rules and ot
 
 **Updates first** is enabled on each page load. It promotes marked parent comments and threads containing marked replies. With newest-first time sorting, available marked comment/reply timestamps order that section. Turning it off restores the selected sort. **Updates only** defaults to off and combines with search, rating, template and date filters. Unmarked ancestors may remain as necessary reply context. Comment CSV export follows the same marked reply/context rules.
 
-Update IDs persist in each entry's comments.json. Repeated sync adds new IDs without replacing older update markers. Reopening the page/browser or restarting the service preserves them until **Clear update markers** is used. This clears the selected entry, or the entire overview group, regardless of active filters. The sync status separately reports items added by that particular sync; this is not the update-marker total.
+Update IDs persist in each entry's comments.json. After reopening or reloading the page, each entry's first fully successful sync clears previous-round markers while preserving additions received during this page session. Later syncs accumulate. Failed or incomplete reply syncs retain older markers; a successful retry keeps additions already saved during partial attempts. Each region in a group is handled separately.
+
+**Clear update markers** sits next to the update totals, uses the accent color and shows a count when available, and is disabled when empty or syncing. It clears the selected entry, or the entire overview group, regardless of active filters, without deleting comments or notes. The sync status separately reports that sync's additions. Restart the service and refresh the page after this backend update.
 
 Reply rows separate author, addressee and body. Actual nested data is indented. Hovering or focusing a row highlights posts by its addressed user within that thread. Some responses identify only a user, not an exact target reply; several posts may match. These highlights do not assert an exact parent relationship.
 

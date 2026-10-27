@@ -64,7 +64,7 @@ function scheduleShutdown(reason) {
 
 const job = { id: 0, running: false, lines: [], startedAt: null, finishedAt: null, results: [], error: null }
 
-function startSync({ name, names, full }) {
+function startSync({ name, names, full, markerBaselines = {} }) {
   if (job.running) return { ok: false, error: '已有同步任务在跑，等它结束。' }
   job.id += 1
   job.running = true
@@ -95,7 +95,8 @@ function startSync({ name, names, full }) {
       if (cookie) job.lines.push({ __log: true, k: 'log.cookie', p: {}, z: '（检测到 cookie.txt，将带上登录凭据）' })
       for (const g of targets) {
         try {
-          job.results.push(await collect.syncGame(cookie, g, { full: !!full, includeSubReplies: true }))
+          job.results.push(await collect.syncGame(cookie, g, { full: !!full, includeSubReplies: true,
+            markerBaseline:Object.hasOwn(markerBaselines,g.name)?markerBaselines[g.name]:undefined }))
         } catch (err) {
           const msg = err && err.message ? err.message : String(err)
           job.lines.push({ __log: true, k: 'log.entryFail', p: { name: g.name, msg }, z: '    ✗ ' + g.name + ' 失败：' + msg })
@@ -112,7 +113,7 @@ function startSync({ name, names, full }) {
     }
   })()
 
-  return { ok: true, jobId: job.id }
+  return { ok: true, jobId: job.id, markerRounds: true }
 }
 
 /* ────────────── HTTP ────────────── */
@@ -392,10 +393,14 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && p === '/api/sync') {
     if (subReplyActive) return json(res, 409, { ok: false, errorKey: 'error.syncBusy' })
     const b = await readBody(req)
+    if(b.markerBaselines!==undefined&&(!b.markerBaselines||typeof b.markerBaselines!=='object'||Array.isArray(b.markerBaselines)
+      ||Object.values(b.markerBaselines).some(value=>!value||['comments','subReplies','parents'].some(key=>!Array.isArray(value[key])||value[key].some(id=>typeof id!=='string')))))
+      return json(res,400,{ok:false,error:'Invalid update-marker baseline'})
     return json(res, 200, startSync({
       name: b.name || null,
       names: Array.isArray(b.names) && b.names.length ? b.names : null,
       full: !!b.full,
+      markerBaselines:b.markerBaselines||{},
     }))
   }
 
@@ -411,7 +416,7 @@ const server = http.createServer(async (req, res) => {
       total: job.lines.length,
       results: job.results.map((r) => r.error
         ? { name: r.entry.name, error: r.error }
-        : { name: r.entry.name, count: r.count, total: r.total, added: r.added, addedSubReplies: r.addedSubReplies || 0, subReplyFailed: r.subReplyFailed || 0 }),
+        : { name: r.entry.name, count: r.count, total: r.total, added: r.added, addedSubReplies: r.addedSubReplies || 0, subReplyFailed: r.subReplyFailed || 0, markerRoundApplied: !!r.markerRoundApplied }),
     })
   }
 

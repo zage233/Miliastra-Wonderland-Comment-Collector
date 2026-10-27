@@ -64,3 +64,7 @@ The public terminology is now updates, not unread. Existing unread storage/API n
 
 reading-header.test.cjs checks downward hiding, upward reveal, top-of-page behavior, small-scroll hysteresis, interaction locks and tall narrow-screen headers. Browser combination tests additionally cover actual PageDown/PageUp, open selector protection, group sync while editing a note, stable management table columns across collapse, all 15 update labels, all ten hide-default palettes and custom hover colors.
 
+
+## First-sync marker lifecycle
+
+update-rounds.test.cjs verifies page-round snapshots, stable region/level identity across renames, independent regions, manual clearing, and old-backend detection. update-rounds-api.test.cjs launches the real service in an isolated directory and checks partial additions plus failed replies, retry without losing current-session additions, no-change sync accumulation, a fresh-page baseline clearing previous markers, independent group-member failure, unchanged comment bodies, and invalid baseline input rejection.

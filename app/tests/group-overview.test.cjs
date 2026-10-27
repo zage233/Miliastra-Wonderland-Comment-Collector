@@ -4,7 +4,7 @@ const html=fs.readFileSync(path.join(__dirname,'..','app.html'),'utf8')
 function extract(c,start,end){vm.runInContext(html.slice(html.indexOf(start),html.indexOf(end,html.indexOf(start))),c)}
 function context(extra={}){
   const c={state:{games:[{name:'A',group:'Shared',region:'os_asia',count:1},{name:'B',group:'Shared',region:'os_euro',count:1},{name:'Other',group:'Other',count:1},{name:'Empty',group:'Shared',count:0}],gameIdx:0,groupOverview:'Shared',loadSeq:1,thr:8},
-    groupOf:g=>g.group||g.name,t:k=>k,renderAll(){},loadNotes:async()=>{},setStatus(){},norm:s=>s, classifyKnown:()=>null,...extra}
+    updateRounds:{remember(){},needs:()=>false},groupOf:g=>g.group||g.name,t:k=>k,renderAll(){},loadNotes:async()=>{},setStatus(){},norm:s=>s, classifyKnown:()=>null,...extra}
   vm.createContext(c)
   extract(c,'function overviewReplyKey','function selectGroupOverview')
   extract(c,'function groupMembers','function selectEntryTab')
@@ -116,3 +116,5 @@ test('回复串使用默认收起的原生 details，多层嵌套受限且回复
   assert.match(html,/text\.textContent=row.content/)
   assert.match(html,/thread\.dataset\.parentReplyId/)
 })
+
+

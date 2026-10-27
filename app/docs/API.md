@@ -84,3 +84,9 @@ The collector selects Miyoushe or HoYoLAB through the region and uses level-deta
 Run `node --test app/tests/*.test.cjs` from the tool root. Unit tests simulate errors and races; integration tests launch the real local server and collector in temporary directories, substituting only remote API responses. They cover local persistence, duplicate handling, group operations, partial sync failure, deletion locks and damaged files. They do not establish the future availability of live remote services or a particular proxy node.
 
 See the [Chinese README](../../README.md) or [English README](../../README.en.md) for user instructions.
+
+## Page-session marker rollover
+
+The UI optionally sends markerBaselines in POST /api/sync, keyed by registered entry name; each value has comments, subReplies and parents string-ID arrays. It snapshots markers before this page receives new data. On a fully successful entry sync, the collector subtracts only those baseline IDs immediately before atomic file commit, then retains this session's additions. Failed/incomplete reply runs do not roll over markers. Successful entries return markerRoundApplied in /api/progress. The sync-start response advertises markerRounds: true; a new UI warns if an old backend lacks this capability. Omitting markerBaselines preserves legacy/CLI accumulation. No comments or notes are deleted by rollover.
+
+The UI handles each region/level independently, survives in-page renames, and retries with the same baseline after partial failures. Reloading/reopening creates a fresh page round; manual marker clearing also completes the current round. The baseline is not resent after the first successful rollover in that page.

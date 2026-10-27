@@ -1171,6 +1171,13 @@ async function syncGame(cookie, entry, opts = {}) {
   }
   let previousUnread = { comments: [], subReplies: [], parents: [] }
   try { previousUnread = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '')).unread || previousUnread } catch {}
+  // Roll over only the markers seen before this page's first attempt. Newly saved
+  // markers from failed/partial attempts remain pending until a later round.
+  const markerRoundApplied=!!opts.markerBaseline&&subReplyFailed===0
+  if(markerRoundApplied)for(const key of ['comments','subReplies','parents']){
+    const old=new Set(opts.markerBaseline[key]||[])
+    previousUnread[key]=(previousUnread[key]||[]).filter(id=>!old.has(String(id)))
+  }
   const oldChildIds = new Set(existing.flatMap(r => flattenSubReplies(r.sub_replies)).map(r => String(r.reply_id || r.floor_id)))
   const newComments = replies.filter(r => !knownIds.has(idOf(r))).map(idOf)
   const newSubReplies = [], newSubParents = []
@@ -1183,6 +1190,10 @@ async function syncGame(cookie, entry, opts = {}) {
     comments: [...new Set([...(previousUnread.comments || []), ...newComments])].filter(id => visibleComments.has(id)),
     subReplies: [...new Set([...(previousUnread.subReplies || []), ...newSubReplies])].filter(id => visibleChildren.has(id)),
     parents: [...new Set([...(previousUnread.parents || []), ...newSubParents])].filter(id => visibleComments.has(id)),
+  }
+  if(markerRoundApplied){
+    const pending=new Set(unread.subReplies)
+    unread.parents=replies.filter(parent=>flattenSubReplies(parent.sub_replies).some(child=>pending.has(String(child.reply_id||child.floor_id)))).map(idOf)
   }
 
   // 关卡信息（名字 / 好评率 / 分类），取不到不影响评论
@@ -1231,7 +1242,7 @@ async function syncGame(cookie, entry, opts = {}) {
     emit(L('log.normalGap', { n: gap }, '    计数差 ' + gap + ' 条属正常：服务端 total 含已删除或隐藏楼层。'))
   }
   emit(L('log.subSummary', { n: newSubReplies.length, failed: subReplyFailed }, '    新增子评论 ' + newSubReplies.length + '，未完成的评论串 ' + subReplyFailed))
-  return { entry, count: replies.length, total, added: newComments.length, addedSubReplies: newSubReplies.length, subReplyFailed, levelInfo }
+  return { entry, count: replies.length, total, added: newComments.length, addedSubReplies: newSubReplies.length, subReplyFailed, levelInfo, markerRoundApplied }
 }
 
 /* ══════════════════════ 便签 ══════════════════════ */
