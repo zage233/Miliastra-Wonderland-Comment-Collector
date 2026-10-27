@@ -130,6 +130,34 @@
   .foot{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;color:var(--dim2);font-size:11.5px}
   .subs{margin-top:6px;padding-left:11px;border-left:2px solid var(--line);color:var(--dim);font-size:13px}
   .subs div{margin:2px 0}
+  .card.unread{border-left:4px solid var(--accent)}
+  .subs .sub-new{background:#91a7ff16;border-radius:6px;padding:5px 7px;color:var(--text)}
+  .subs .sub-author,.nick{color:var(--accent);font-weight:600}
+  .subs .sub-target{color:var(--dim);font-weight:500}
+  .subs .sub-text{color:var(--text);font-weight:400}
+  .subs .sub-separator{color:var(--dim2)}
+  .sub-thread>.subs{max-width:none}
+  .subs .sub-line{position:relative;margin:8px 0 8px calc(10px + var(--sub-depth,0)*18px);padding:10px 12px;border:1px solid var(--line);border-left:3px solid var(--line);border-radius:8px;background:color-mix(in srgb,var(--accent) 4%,var(--panel));transition:background-color .15s,border-color .15s}
+  .subs .sub-heading{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 4px}
+  .subs .sub-text{display:block;white-space:pre-wrap;overflow-wrap:anywhere}
+  .subs .sub-target{font-size:11px;padding:1px 7px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--dim)}
+  .subs .sub-time{font-size:10px;color:var(--dim2);margin-left:auto}
+  .subs .sub-line:hover,.subs .sub-line:focus-visible{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--panel));outline:1px solid var(--accent);outline-offset:1px}
+  .subs .sub-line.sub-related{border-left-color:var(--good);background:color-mix(in srgb,var(--good) 14%,var(--panel));box-shadow:inset 0 0 0 1px var(--good)}
+  .subs .sub-line.sub-new{padding:10px 12px}
+  @media(max-width:600px){.subs .sub-line{margin-left:calc(6px + var(--sub-depth,0)*9px);padding:9px}.subs .sub-time{margin-left:0}}
+  .sub-thread{margin-top:12px}.sub-thread summary{cursor:pointer;color:var(--accent);font-size:12px;padding:5px 0}
+  .unread-control{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;font-size:12px;color:var(--text);cursor:pointer}
+  .unread-control:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 15%,var(--panel))}
+  .unread-control input{margin:0;accent-color:var(--accent)}
+  .new-summary{margin-left:auto;display:flex;align-items:center;gap:8px;color:var(--text);border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--panel));border-radius:9px;padding:7px 12px;font-size:12px;font-weight:650;font-variant-numeric:tabular-nums}
+  .new-summary:before,.new-badge:before{content:'';display:inline-block;width:6px;height:6px;background:currentColor;border-radius:50%;margin-right:6px}
+  .new-badge{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:700;padding:3px 9px}
+  .sub-thread.has-new{border-color:var(--accent);overflow:hidden}
+  .sub-thread.has-new>summary{background:color-mix(in srgb,var(--accent) 14%,var(--panel));color:var(--text);padding:10px 12px;font-weight:650}
+  .sub-thread.has-new>summary::marker{color:var(--accent)}
+  .subs .sub-new{border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--panel))}
+  @media(max-width:600px){.new-summary{margin-left:0;max-width:100%;white-space:normal}}.new-summary:empty{display:none}
   .star{position:absolute;top:9px;right:10px;font-size:12px;line-height:1.5;
     padding:2px 10px;border-radius:999px;border:1px solid var(--line);
     background:var(--panel2);color:var(--dim);cursor:pointer}
@@ -375,7 +403,7 @@
   .card.dflt{opacity:1;background:#151e2a}
   .card.dflt .content{color:#a6b3c8}
   .chead{gap:10px;margin-bottom:11px;align-items:center;padding-right:85px}
-  .nick{font-size:13.5px;color:#dce5f4}
+  .nick{font-size:13.5px;color:var(--accent)}
   .floor,.time{font-size:11px;color:var(--dim2)}
   .tag{font-size:10px;padding:2px 7px;line-height:1.5}
   .tag.good{background:#1e382f;border-color:#2b5143;color:#8edabb}
@@ -509,6 +537,11 @@ body.onboard-active .onboard-target{outline:2px solid #ffd166!important;outline-
 @media(prefers-reduced-motion:reduce){#onboardBeacon,#onboardBeaconArrow{animation:none}}
 .onboard-translation-tip{margin:14px 0 0;padding:12px 14px;border:1px solid #b49349;border-left:4px solid #ffd166;border-radius:9px;background:#3a3120;color:#ffe5a0;font-size:13px;line-height:1.85;font-weight:600}.onboard-translation-tip[hidden]{display:none}
 #onboardCoach.onboard-complete{max-height:80vh}@media(max-width:600px){#onboardCoach.onboard-complete{width:calc(100vw - 28px)}}
+  /* Keep the header's layout footprint stable while freeing reading space. */
+  header{position:sticky;top:0;transform:translateY(0);transition:transform .22s ease,visibility 0s}
+  header.reading-hidden{transform:translateY(calc(-100% - 2px));visibility:hidden;pointer-events:none;transition:transform .22s ease,visibility 0s .22s}
+  html.reading-header-hidden{scroll-padding-top:24px}
+  @media(prefers-reduced-motion:reduce){header,header.reading-hidden{transition:none}}
 </style>
 </head>
 <body>
@@ -589,7 +622,10 @@ body.onboard-active .onboard-target{outline:2px solid #ffd166!important;outline-
 <label id="hideDefaultWrap" class="muted" title="把官方代发的模板评论整体隐藏，只留真人手写的内容。约有一半评论是官方代发的。">
       <input type="checkbox" id="hideDefault" style="vertical-align:-2px"> <span id="hideDefaultLabel">过滤默认</span>
     </label>
+<label class="unread-control"><input type="checkbox" id="pinUnread" checked><span id="pinUnreadLabel">更新优先</span></label>
+    <label class="unread-control"><input type="checkbox" id="onlyUnread"><span id="onlyUnreadLabel">只看更新</span></label>
     </div>
+    
     <div class="filter-group filter-dates">
     <span class="muted" id="dateLabel" title="按评论发布时间筛选，起止都含当天">时间</span>
     <div class="date-range"><input type="date" id="dateFrom" title="起始日期（含当天）" style="width:140px">
@@ -599,6 +635,7 @@ body.onboard-active .onboard-target{outline:2px solid #ffd166!important;outline-
     </div>
     <div class="filter-group filter-actions">
     <button id="csv" title="按当前筛选结果导出 CSV">导出</button>
+    <button id="markRead" type="button"></button>
     <button id="btnHelp" title="各项功能说明">? 说明</button>
     </div>
   </div>
@@ -861,8 +898,7 @@ body.onboard-active .onboard-target{outline:2px solid #ffd166!important;outline-
       <li id="helpx28"><strong>热门序</strong>能捞到被跳过的那些楼层，但它给的子回复只是<strong>预览</strong>——
           实测某一页 120 条评论声明了 90 条子回复，内联只返回 8 条。</li>
     </ul>
-    <p id="helpx29">我试过专门的 <code>sub_replies</code> 接口：参数能通过校验（不再报「参数无效」），
-    但服务端一律返回 <code>fatal error</code>，可能要求登录态，也可能还差一个挖不到的字段。</p>
+    <p id="helpx29">同步会自动使用父评论 ID 分页保存子回复。接口失败或达到保护上限会明确提示未完成，可单独刷新重试。</p>
     <p class="muted" id="helpx30">收集器已经做到：同一条评论如果从不同排序各返回一次，<strong>取子回复最全的那一份</strong>。
     剩下的缺口是接口限制，不是可以绕过的。</p>
 
@@ -1007,7 +1043,7 @@ function classifyKnown(k) {
 const state = {
   games: [], gameIdx: -1, groupOverview: null, data: null, notes: [], noteKeys: new Set(),
   tab: 'list', mood: 'all', sort: 'floor_desc', q: '', hideDefault: false, thr: 8, shown: 200,
-  dateFrom: '', dateTo: '',
+  dateFrom: '', dateTo: '', pinUnread: true, onlyUnread: false,
   mgmtOpen: new Set(),      // 管理页展开了哪些分组
   selectOpen: new Set(),    // 关卡下拉里展开了哪些分组
   allNotes: [],             // 所有游戏的便签（便签页跨游戏显示）
@@ -1215,6 +1251,20 @@ function buildData(raw) {
     r._rating = r.is_recommend === false ? 'bad' : 'good'
     r._like = +((r.reply_stat && r.reply_stat.like_count) || 0)
     r._subs = r.sub_replies || []
+    r._subCount = Math.max(0, Number((r.reply_stat || {}).reply_count) || 0, r._subs.length)
+    const id = String(r.reply_id || r.floor_id)
+    r._isNew = r._unreadComment !== undefined ? r._unreadComment : (raw.unread?.comments || []).includes(id)
+    r._newSubIds = new Set(r._unreadSubIds || raw.unread?.subReplies || [])
+    r._newSubCount = 0
+    const stack = r._subs.slice(), seen = new Set()
+    while (stack.length && seen.size < 10000) {
+      const child = stack.pop()
+      if (!child || typeof child !== 'object') continue
+      const childId = String(child.reply_id || child.floor_id)
+      if (seen.has(childId)) continue
+      seen.add(childId); if (r._newSubIds.has(childId)) r._newSubCount++
+      stack.push(...(child.sub_replies || []))
+    }
     r._key = r._gameName ? overviewReplyKey(r._gameName, r.reply_id || r.floor_id) : String(r.reply_id || r.floor_id)
   }
   return { meta: raw, replies, templates }
@@ -1266,11 +1316,17 @@ function filtered() {
     }
     return true
   })
+  if (state.onlyUnread) for (let i=list.length-1;i>=0;i--) if (!list[i]._isNew&&!list[i]._newSubCount) list.splice(i,1)
+  const unreadTimes=new Map()
+  const unreadTime=r=>{if(!unreadTimes.has(r))unreadTimes.set(r,Math.max(r._isNew?Number(r.created_at)||0:0,...visibleSubReplies(r._subs).filter(({row})=>r._newSubIds?.has(String(row.reply_id||row.floor_id))).map(({row})=>Number(row.created_at)||0)));return unreadTimes.get(r)}
   const s = state.sort
   list.sort((a, b) => {
+    if(state.pinUnread){const priority=Number(!!(b._isNew||b._newSubCount))-Number(!!(a._isNew||a._newSubCount));if(priority)return priority
+      if(s==='floor_desc'&&(a._isNew||a._newSubCount)){const time=unreadTime(b)-unreadTime(a);if(time)return time}}
     if (s === 'floor_desc') return (b.created_at || 0) - (a.created_at || 0) || (b.floor_id || 0) - (a.floor_id || 0)
     if (s === 'floor_asc') return (a.created_at || 0) - (b.created_at || 0) || (a.floor_id || 0) - (b.floor_id || 0)
     if (s === 'like_desc') return b._like - a._like || (b.floor_id || 0) - (a.floor_id || 0)
+    if (s === 'replies_desc') return b._subCount - a._subCount || (b.created_at || 0) - (a.created_at || 0)
     if (s === 'len_desc') return b._text.length - a._text.length
     return 0
   })
@@ -1358,6 +1414,12 @@ function renderStats() {
     const written = all.filter(r => !r._tpl || r._tpl === 'df_mixed')
   const official = g && g.meta.levelInfo && g.meta.levelInfo.goodRate
   const box = $('stats'); box.innerHTML = ''
+  const mark = $('markRead')
+  if (mark) { mark.textContent = t('new.markRead'); mark.disabled = !all.some(r => r._isNew || r._newSubCount) }
+  let summary = $('newSummary')
+  if (!summary) { summary = document.createElement('div'); summary.id = 'newSummary'; summary.className = 'new-summary'; document.querySelector('.filter-moods').append(summary) }
+  const newCount = all.filter(r => r._isNew).length, newSubCount = all.reduce((sum, r) => sum + (r._newSubCount || 0), 0)
+  summary.textContent = (newCount || newSubCount) ? t('new.summary').replace('{n}', newCount).replace('{s}', newSubCount) : ''
   const mk = (v, l, color) => {
     const d = document.createElement('div'); d.className = 'stat'
     const b = document.createElement('b'); b.textContent = v; if (color) b.style.color = color
@@ -1396,9 +1458,63 @@ function renderStats() {
   }
 }
 
+function visibleSubReplies(rows) {
+  const result = [], seen = new Set(), stack = (rows || []).slice().reverse().map(row => ({ row, depth: 0 }))
+  while (stack.length && result.length < 1000) {
+    const item = stack.pop(), row = item.row
+    if (!row || typeof row !== 'object') continue
+    const key = row.reply_id ? String(row.reply_id) : row
+    if (seen.has(key)) continue
+    seen.add(key); result.push(item)
+    for (const child of (row.sub_replies || []).slice().reverse()) stack.push({ row: child, depth: Math.min(5, item.depth + 1) })
+  }
+  return result
+}
+function unreadSubView(items, ids = new Set(), pin, only) {
+  const roots=[],stack=[]
+  for(const item of items){const node={...item,children:[],unread:ids.has(String(item.row.reply_id||item.row.floor_id)),time:0}
+    while(stack.length&&stack[stack.length-1].depth>=node.depth)stack.pop()
+    if(stack.length)stack[stack.length-1].children.push(node);else roots.push(node)
+    stack.push(node)
+  }
+  const prepare=nodes=>{for(const n of nodes){prepare(n.children);n.time=Math.max(n.unread?Number(n.row.created_at)||0:0,...n.children.map(c=>c.time));n.hasUnread=n.unread||n.children.some(c=>c.hasUnread)}
+    if(pin)nodes.sort((a,b)=>Number(b.hasUnread)-Number(a.hasUnread)||(a.hasUnread?b.time-a.time:0))}
+  prepare(roots)
+  const out=[],visit=nodes=>{for(const n of nodes){if(only&&!n.hasUnread)continue;out.push({row:n.row,depth:n.depth});visit(n.children)}}
+  visit(roots);return out
+}
+function renderSubReplies(box, rows, newIds = new Set()) {
+  box.textContent = ''
+  for (const { row, depth } of unreadSubView(visibleSubReplies(rows),newIds,state.pinUnread,state.onlyUnread)) {
+    const line = document.createElement('div')
+    line.className = 'sub-line' + (newIds.has(String(row.reply_id || row.floor_id)) ? ' sub-new' : '')
+    line.style.setProperty('--sub-depth',depth)
+    line.tabIndex=0
+    const userKey=user=>user?.uid?'uid:'+String(user.uid):user?.nickname?'name:'+user.nickname:''
+    line.dataset.authorKey=userKey(row.user_info)
+    line.dataset.targetKey=userKey(row.r_user)
+    const clearRelation=()=>{for(const other of box.querySelectorAll('.sub-related'))other.classList.remove('sub-related')}
+    const showRelation=()=>{clearRelation();if(line.dataset.targetKey)for(const other of box.querySelectorAll('.sub-line'))if(other!==line&&other.dataset.authorKey===line.dataset.targetKey)other.classList.add('sub-related')}
+    line.onmouseenter=showRelation;line.onfocus=showRelation
+    line.onmouseleave=()=>{if(document.activeElement!==line)clearRelation()};line.onblur=clearRelation
+    const heading=document.createElement('div');heading.className='sub-heading'
+    const author=document.createElement('span');author.className='sub-author';author.textContent=(row.user_info || {}).nickname || '—'
+    heading.append(author)
+    if(row.r_user?.nickname){
+      const target=document.createElement('span');target.className='sub-target'
+      target.textContent=t('sub.replyTo').replace('{name}',row.r_user.nickname)
+      target.title=t('sub.relationHint');heading.append(target)
+    }
+    if(row.created_at){const time=document.createElement('span');time.className='sub-time';time.textContent=fmtTime(row.created_at);heading.append(time)}
+    const text=document.createElement('span');text.className='sub-text';text.setAttribute('translate','yes');text.textContent=row.content || ''
+    line.append(heading,text)
+    box.append(line)
+  }
+}
 function makeCard(r, flash) {
   const card = document.createElement('div')
   card.className = 'card ' + (r._rating === 'good' ? 'good' : 'bad') + (r._tpl ? ' dflt' : '') + (flash ? ' flash' : '')
+  if (r._isNew) card.classList.add('unread')
   card.dataset.key = r._key
   card.dataset.floor = r.floor_id
 
@@ -1415,6 +1531,7 @@ function makeCard(r, flash) {
   const fl = document.createElement('span'); fl.className = 'floor'; fl.textContent = '#' + r.floor_id
   const tm = document.createElement('span'); tm.className = 'time'; tm.textContent = fmtTime(r.created_at)
   head.append(nick, fl, tm)
+  if (r._isNew || r._newSubCount) { const badge = document.createElement('span'); badge.className = 'tag new-badge'; badge.textContent = t(r._isNew ? 'new.comment' : 'new.reply'); head.append(badge) }
   if (r._gameName) {
     const source = document.createElement('span'); source.className = 'tag'
     source.textContent = regionName(r._region, r._regionLabel)
@@ -1426,19 +1543,46 @@ function makeCard(r, flash) {
   head.append(tg)
   if (r._tpl) { const d = document.createElement('span'); d.className = 'tag dflt'; d.textContent = t(r._tpl === 'df_mixed' ? 'tag.mixed' : 'tag.default'); d.title = t(r._tpl === 'df_mixed' ? 'tag.mixedTip' : 'tag.defaultTip'); head.append(d) }
   if (r._like > 0) { const lk = document.createElement('span'); lk.className = 'tag'; lk.textContent = '👍 ' + r._like; head.append(lk) }
+  if (r._subCount > 0) { const count = document.createElement('span'); count.className = 'tag'; count.textContent = t('sub.count').replace('{n}', r._subCount); head.append(count) }
   card.append(head)
 
-  const body = document.createElement('div'); body.className = 'content'; body.textContent = r._text || t('card.empty')
+  const body = document.createElement('div'); body.className = 'content'; body.setAttribute('translate','yes'); body.textContent = r._text || t('card.empty')
   card.append(body)
 
-  if (r._subs.length) {
+  if (r._subs.length || r._subCount > 0) {
+    const thread = document.createElement('details'); thread.className = 'sub-thread'
+    if(r._newSubCount)thread.classList.add('has-new')
+    thread.dataset.parentReplyId=String(r.reply_id || r.floor_id)
+    const summary = document.createElement('summary')
+    const threadLabel=()=>t('sub.count').replace('{n}', r._subCount)+' · #'+r.floor_id+' · '+((r.user_info || {}).nickname || '—')+(r._newSubCount ? ' · '+t('new.reply')+' '+r._newSubCount : '')
+    summary.textContent = threadLabel()
+    thread.append(summary)
     const subs = document.createElement('div'); subs.className = 'subs'
-    for (const s of r._subs) {
-      const d = document.createElement('div')
-      d.textContent = '↳ ' + ((s.user_info && s.user_info.nickname) || '') + '：' + ((s.content || '').trim())
-      subs.append(d)
+    renderSubReplies(subs, r._subs, r._newSubIds)
+    const actions = document.createElement('div'); actions.className = 'rowacts'
+    const load = document.createElement('button'); load.textContent = t('sub.load')
+    const status = document.createElement('span'); status.className = 'muted'; status.setAttribute('role', 'status')
+    load.onclick = async () => {
+      if (load.disabled) return
+      const g = r._gameName ? state.games.find(g => g.name === r._gameName) : state.games[state.gameIdx]
+      if (!g) return
+      load.disabled = true; status.textContent = t('sub.loading')
+      try {
+        const result = await postJson('/api/sub-replies', { name: g.name, replyId: String(r.reply_id || r.floor_id) })
+        if (!result.ok) throw new Error(lookupErrorText(result))
+        r.sub_replies = r._subs = result.replies
+        r._subCount = Math.max(r._subCount, result.replies.length)
+        for (const id of result.newIds || []) r._newSubIds.add(id)
+        r._newSubCount = visibleSubReplies(result.replies).filter(({ row }) => r._newSubIds.has(String(row.reply_id || row.floor_id))).length
+        summary.textContent = threadLabel()
+        renderSubReplies(subs, result.replies, r._newSubIds)
+        renderStats()
+        status.textContent = t(result.complete ? 'sub.loaded' : 'sub.partial').replace('{n}', visibleSubReplies(result.replies).length)
+      } catch (error) { status.textContent = t('error.request') + ': ' + error.message }
+      finally { load.disabled = false }
     }
-    card.append(subs)
+    if (r.subReplyFetch && !r.subReplyFetch.complete) status.textContent = t('sub.partial').replace('{n}', visibleSubReplies(r._subs).length)
+    actions.append(load, status); thread.append(subs, actions); card.append(thread)
   }
   const foot = document.createElement('div'); foot.className = 'foot'
   const bits = []
@@ -1508,6 +1652,7 @@ async function loadNotes() {
     if (seq !== noteLoadSeq) return
     if (!response.ok || !Array.isArray(j.notes)) throw new Error(lookupErrorText(j))
     state.allNotes = j.notes
+    for (const entry of state.games) entry.noteCount = j.notes.filter(n => n._gameName === entry.name).length
     if (state.groupOverview) {
       const names = new Set(groupMembers().map(g => g.name))
       state.notes = j.notes.filter(n => names.has(n._gameName))
@@ -1955,7 +2100,8 @@ async function loadGroupComments(seq) {
       if (!response.ok) throw new Error(g.name + ': HTTP ' + response.status)
       const raw = await response.json()
       if (!Array.isArray(raw.replies)) throw new Error(g.name)
-      return raw.replies.map(r => ({ ...r, _gameName: g.name, _region: g.region, _regionLabel: g.regionLabel }))
+      return raw.replies.map(r => ({ ...r, _gameName: g.name, _region: g.region, _regionLabel: g.regionLabel,
+        _unreadComment: (raw.unread?.comments || []).includes(String(r.reply_id || r.floor_id)), _unreadSubIds: raw.unread?.subReplies || [] }))
     }))
     if (seq !== state.loadSeq) return
     // This is a virtual view: retain separate storage and IDs for every server.
@@ -2333,13 +2479,14 @@ async function runSync(full, name, all, names) {
         if (!pj.running) {
           clearInterval(polling); polling = null
           $('btnSync').disabled = false; $('btnFull').disabled = false; updateGroupBtn()
-          const failures = pj.results.filter(x => x.error)
+          const failures = pj.results.filter(x => x.error || x.subReplyFailed)
           if (pj.error) setStatus('err', pj.error)
           else if (failures.length) setStatus('err', t('status.syncErrors')
-            .replace('{n}', failures.length).replace('{total}', pj.results.length) + ': ' + failures[0].error)
+            .replace('{n}', failures.length).replace('{total}', pj.results.length) + ': ' + (failures[0].error || t('log.subSummary').replace('{n}', failures[0].addedSubReplies || 0).replace('{failed}', failures[0].subReplyFailed)))
           else {
             const add = pj.results.filter(x => !x.error).reduce((s, x) => s + (x.added || 0), 0)
-            setStatus('ok', t('status.syncDone') + (add > 0 ? t('status.syncAdded').replace('{n}', add) : t('status.syncNone')))
+            const subs = pj.results.reduce((sum, x) => sum + (x.addedSubReplies || 0), 0)
+            setStatus('ok', t('status.syncDone') + ' · ' + t('new.syncSummary').replace('{n}', add).replace('{s}', subs))
           }
           await loadGames(true); await loadComments()
           resolve(!pj.error && !failures.length)
@@ -2358,11 +2505,12 @@ async function runSync(full, name, all, names) {
 /* ═══════════ 标签页 ═══════════ */
 function switchTab(t) {
   state.tab = t
+  if (t === 'mgmt') renderMgmt()
   for (const el of document.querySelectorAll('.tab')) {
     el.classList.toggle('on', el.dataset.tab === t)
     el.setAttribute('aria-selected', String(el.dataset.tab === t))
   }
-  for (const s of ['list', 'notes', 'mgmt']) $('tab-' + s).classList.toggle('on', s === t)
+  for (const s of ['list', 'notes', 'mgmt', 'appearance']) { const el = $('tab-' + s); if (el) el.classList.toggle('on', s === t) }
 }
 
 /* ═══════════ 交互 ═══════════ */
@@ -2374,6 +2522,8 @@ $('mood').onclick = e => {
   })
   state.mood = c.dataset.m; renderAll(true)
 }
+$('pinUnread').onchange=e=>{state.pinUnread=e.target.checked;renderAll(true)}
+$('onlyUnread').onchange=e=>{state.onlyUnread=e.target.checked;renderAll(true)}
 $('sort').onchange = e => { state.sort = e.target.value; renderAll(true) }
 $('q').oninput = e => { state.q = e.target.value; renderAll(true) }
 $('dateFrom').onchange = e => { state.dateFrom = e.target.value; renderAll(true) }
@@ -2433,7 +2583,7 @@ const q = s => {
 $('csv').onclick = () => {
   const rows = filtered()
     const head = [t('csv.game'), t('csv.region'), t('csv.floor'), t('csv.nick'), t('csv.uid'), t('csv.time'), t('csv.rating'),
-      t('csv.isTemplate'), t('csv.like'), t('csv.content'), t('csv.ip')]
+      t('csv.isTemplate'), t('csv.like'), t('csv.content'), t('csv.ip'), t('sub.count').replace('{n}', '').replace(/[：:]\s*$/, ''), t('sub.export')]
   const lines = [head.map(q).join(',')]
   for (const r of rows) {
     lines.push([
@@ -2442,10 +2592,19 @@ $('csv').onclick = () => {
       r.floor_id, (r.user_info && r.user_info.nickname) || '', (r.user_info && r.user_info.uid) || '',
         fmtTime(r.created_at), r._rating === 'good' ? t('csv.good') : t('csv.bad'),
         (r._tpl === 'df_good' || r._tpl === 'df_bad') ? t('csv.yes') : t('csv.no'),
-        r._like, r._text, r.client_ip,
+        r._like, r._text, r.client_ip, r._subCount,
+        unreadSubView(visibleSubReplies(r._subs), r._newSubIds, state.pinUnread, state.onlyUnread).map(({ row }) => ((row.user_info || {}).nickname || '') + ': ' + (row.content || '')).join('\n'),
     ].map(q).join(','))
   }
   download((state.groupOverview || (state.games[state.gameIdx] && state.games[state.gameIdx].name) || t('csv.comments')) + '-' + t('csv.comments') + '.csv', lines.join('\r\n'))
+}
+$('markRead').onclick = async () => {
+  const members = state.groupOverview ? groupMembers() : [state.games[state.gameIdx]].filter(Boolean)
+  try {
+    const result = await postJson('/api/mark-read', { names: members.map(g => g.name) })
+    if (!result.ok) throw new Error(lookupErrorText(result))
+    await loadComments()
+  } catch (error) { setStatus('err', t('error.request') + ': ' + error.message) }
 }
 $('noteMode').onchange = e => { state.noteMode = e.target.value; renderNotes() }
 
@@ -2940,7 +3099,46 @@ fetch('/api/life').then(r => r.json()).then(j => {
   setStatus('', t('status.ready'))
 })()
 </script>
+<script>
+// Scroll direction hysteresis avoids flicker from trackpad jitter and layout changes.
+function nextHeaderMotion(previous, scroll, height, blocked) {
+  const y=Math.max(0,Number(scroll)||0),last=previous||{y,hidden:false,direction:0,distance:0}
+  if(blocked||y<=24)return {y,hidden:false,direction:0,distance:0}
+  const delta=y-last.y
+  if(Math.abs(delta)<1)return {...last,y}
+  const direction=delta>0?1:-1,distance=last.direction===direction?last.distance+Math.abs(delta):Math.abs(delta)
+  let hidden=last.hidden
+  if(direction>0&&y>height+20&&distance>=28)hidden=true
+  if(direction<0&&distance>=12)hidden=false
+  return {y,hidden,direction,distance}
+}
+function initReadingHeader() {
+  const header=document.querySelector('header')
+  if(!header)return
+  let height=header.offsetHeight,motion=nextHeaderMotion(null,window.scrollY,height,true),queued=false,keyboardNavigation=false
+  const blocked=()=>!!document.querySelector('dialog[open]')||document.body.classList.contains('onboard-active')
+    ||!!(document.getElementById('gselPanel')&&!document.getElementById('gselPanel').hidden)
+    ||(keyboardNavigation&&header.contains(document.activeElement))
+  const apply=()=>{header.classList.toggle('reading-hidden',motion.hidden);document.documentElement.classList.toggle('reading-header-hidden',motion.hidden)}
+  const reveal=()=>{motion=nextHeaderMotion(motion,window.scrollY,height,true);apply()}
+  const update=()=>{queued=false;motion=nextHeaderMotion(motion,window.scrollY,height,blocked());apply()}
+  const schedule=()=>{if(!queued){queued=true;requestAnimationFrame(update)}}
+  const measure=()=>{height=header.offsetHeight;document.documentElement.style.setProperty('--header-height',height+'px');reveal()}
+  window.addEventListener('scroll',schedule,{passive:true})
+  window.addEventListener('resize',measure,{passive:true})
+  window.addEventListener('wheel',()=>{keyboardNavigation=false},{passive:true})
+  document.addEventListener('pointerdown',()=>{keyboardNavigation=false},{passive:true})
+  document.addEventListener('touchstart',()=>{keyboardNavigation=false},{passive:true})
+  document.addEventListener('click',schedule)
+  document.addEventListener('focusin',event=>{if(header.contains(event.target))reveal()})
+  document.addEventListener('keydown',event=>{if(event.key==='Tab'){keyboardNavigation=true;reveal()}else if(event.key==='Escape')reveal()})
+  if(typeof ResizeObserver!=='undefined')new ResizeObserver(measure).observe(header)
+  measure()
+}
+initReadingHeader()
+</script>
 <script src="/onboarding.js"></script>
 <script src="/batch-add.js"></script>
+<script src="/appearance.js"></script>
 </body>
 </html>

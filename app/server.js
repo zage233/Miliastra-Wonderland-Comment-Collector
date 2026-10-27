@@ -18,6 +18,7 @@ const { importBatch } = require('./import-batch.js')
 
 const ROOT = __dirname
 const APP_HTML = path.join(ROOT, 'app.html')
+let subReplyActive = 0
 
 function arg(name, def) {
   const i = process.argv.indexOf(name)
@@ -94,7 +95,7 @@ function startSync({ name, names, full }) {
       if (cookie) job.lines.push({ __log: true, k: 'log.cookie', p: {}, z: '（检测到 cookie.txt，将带上登录凭据）' })
       for (const g of targets) {
         try {
-          job.results.push(await collect.syncGame(cookie, g, { full: !!full }))
+          job.results.push(await collect.syncGame(cookie, g, { full: !!full, includeSubReplies: true }))
         } catch (err) {
           const msg = err && err.message ? err.message : String(err)
           job.lines.push({ __log: true, k: 'log.entryFail', p: { name: g.name, msg }, z: '    ✗ ' + g.name + ' 失败：' + msg })
@@ -196,7 +197,7 @@ const server = http.createServer(async (req, res) => {
     return res.end(buf)
   }
 
-  if (req.method === 'GET' && (p === '/i18n.js' || p === '/onboarding.js' || p === '/batch-add.js' || p === '/note-store.js')) {
+  if (req.method === 'GET' && (p === '/i18n.js' || p === '/onboarding.js' || p === '/batch-add.js' || p === '/note-store.js' || p === '/appearance.js')) {
     const file = path.join(ROOT, p.slice(1))
     if (!fs.existsSync(file)) return json(res, 404, { error: 'i18n.js 缺失' })
     const buf = fs.readFileSync(file)
@@ -211,6 +212,21 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && p === '/api/games') {
     const idx = collect.loadIndex()
     return json(res, 200, { games: idx.games.map(collect.gameSummary), groups: collect.listGroups() })
+  }
+  if (req.method === 'POST' && p === '/api/sub-replies') {
+    if (job.running) return json(res, 409, { ok: false, errorKey: 'error.syncBusy' })
+    const body = await readBody(req)
+    if (typeof body.name !== 'string' || !body.name || typeof body.replyId !== 'string' || !body.replyId) return json(res, 400, { ok: false, code: 'invalid' })
+    subReplyActive++
+    try { return json(res, 200, await collect.fetchSubReplies(body.name, body.replyId)) }
+    catch (error) { return json(res, 200, { ok: false, ...collect.lookupFailure(error) }) }
+    finally { subReplyActive-- }
+  }
+  if (req.method === 'POST' && p === '/api/mark-read') {
+    if (job.running || subReplyActive) return json(res, 409, { ok: false, errorKey: 'error.syncBusy' })
+    const body = await readBody(req)
+    if (!Array.isArray(body.names) || !body.names.every(name => typeof name === 'string')) return json(res, 400, { ok: false, code: 'invalid' })
+    return json(res, 200, collect.markRead(body.names))
   }
 
   // 改某个已登记条目的组（合并组 / 拆组）
@@ -374,6 +390,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && p === '/api/sync') {
+    if (subReplyActive) return json(res, 409, { ok: false, errorKey: 'error.syncBusy' })
     const b = await readBody(req)
     return json(res, 200, startSync({
       name: b.name || null,
@@ -394,7 +411,7 @@ const server = http.createServer(async (req, res) => {
       total: job.lines.length,
       results: job.results.map((r) => r.error
         ? { name: r.entry.name, error: r.error }
-        : { name: r.entry.name, count: r.count, total: r.total, added: r.added }),
+        : { name: r.entry.name, count: r.count, total: r.total, added: r.added, addedSubReplies: r.addedSubReplies || 0, subReplyFailed: r.subReplyFailed || 0 }),
     })
   }
 

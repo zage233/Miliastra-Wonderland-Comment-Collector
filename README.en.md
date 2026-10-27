@@ -2,6 +2,8 @@
 
 [简体中文](README.md) | English
 
+This delivery: [Release notes](app/docs/RELEASE_NOTES.md) · [GitHub upload and file verification](app/docs/RELEASE-CHECK.md)
+
 ## Local service and export protections
 
 The local service validates the loopback Host, actual port, browser Origin and cross-site request metadata. State-changing APIs require JSON, with compatible handling for same-origin page-close beacons. Use the local address printed by the launcher. Comment and note CSV exports prefix potentially formula-like cells with an apostrophe; spreadsheet software may display that prefix. Stored comments and notes remain unchanged. These checks do not replace operating-system permissions for local processes.
@@ -19,7 +21,7 @@ A local tool for collecting public level comments from Miyoushe (China servers) 
 
 On Windows, double-click **`Miliastra Wonderland Comment Collector.exe`**. The launcher has an application icon, opens the interface in your default browser, and runs the local service without a console window. No administrator access is required.
 
-Keep the launcher together with the `app/`, `config/` and `data/` folders. This EXE is a launcher, not a standalone bundle: Node.js 18 or newer must be installed, or provided as `node.exe` beside the launcher or as `runtime/node.exe`. The service also uses Windows curl for proxy requests.
+Keep the complete `app/` folder beside the launcher, and preserve any existing `config/` and `data/` folders. Missing data directories are created as needed on first use. This EXE is a launcher, not a standalone bundle: Node.js 18 or newer must be installed, or provided as `node.exe` beside the launcher or as `runtime/node.exe`. The service also uses Windows curl for proxy requests.
 
 `app/启动.cmd` forwards to the EXE when available; `app/启动.vbs` remains a compatibility entry. For diagnostic console output, run `app/启动.cmd --console` from a terminal in the tool folder.
 
@@ -65,19 +67,35 @@ Each row looks up its ID or link automatically and previews the cover, name and 
 
 ## Comments and synchronization
 
-- **Sync latest:** fetches new comments and merges them into the local collection.
+- **Sync latest:** refreshes the parent-comment index and automatically downloads accessible replies page by page. Old parent comments are revisited to discover newly added replies, so this can take longer than earlier versions.
 - **Full refresh:** fetches the collection again, refreshing existing content. Use it when incremental synchronization appears incomplete.
 - **Group sync / group full refresh:** runs the corresponding operation across the entries in the selected group.
-- Search nicknames, text, comment numbers and IP locations; sort by time, likes or length; filter ratings and inclusive date ranges; export comments to CSV.
+- Search nicknames, text, comment numbers and IP locations; sort by time, likes, length or reply count; filter ratings and inclusive date ranges; export comments to CSV.
 - Save a comment as a note using its star button.
 
 Positive and negative ratings come from the official recommendation field, rather than inferred sentiment. The official approval rate and the rate calculated from locally collected comments can differ.
 
 Default-template filtering uses known multilingual patterns and repeated-text detection. The template threshold controls frequency-based detection: lowering it is more sensitive and may classify repeated personal phrases as templates. Review the template statistics when adjusting it. These are heuristics, not a guarantee of perfect classification.
 
-Full synchronization combines comment-number pagination with popular-order results. API counts may include unavailable comments, and nested replies may only be returned as previews. The tool keeps the fuller nested-reply version when available, but cannot guarantee a complete archive of all replies. Durations depend on the network and collection size.
+Full synchronization combines comment-number pagination with popular-order results. Parent-comment pages may contain only short reply previews; normal sync additionally paginates the reply endpoint described below. Unavailable, hidden or deleted content and remote failures can still prevent a complete archive. Durations depend on the network and collection size.
 
-## Notes and management
+## Replies, new-item highlights and appearance
+
+Returning to the default theme clears preset page, text, control and color-scheme overrides together, preventing mixed light/dark colors. Review authors and reply authors use the accent color; reply targets are subdued and bodies remain separate text. Thread summaries include the parent floor and author. Responses that explicitly identify a different level or parent are rejected before saving.
+
+Normal sync uses the official `parent_reply_id` reply endpoint for the corresponding China/global service, rather than relying on the first two inline previews. Up to three threads are processed concurrently. Each thread has safeguards of 30 seconds, 50 pages and 1,000 replies. Errors, repeated cursors and limits mark the thread incomplete, preserving existing content for retry; three failures stop further batch attempts and mark remaining threads incomplete. Hidden, deleted or inaccessible content cannot be guaranteed.
+
+Reply threads are collapsed by default. Their summary shows the reply count and new-reply indicators; click to expand/collapse. Nested data and reply targets are displayed when returned by the service. Loaded reply bodies are stored in `comments.json` and can be opened offline; only the individual refresh button reconnects. CSV includes reply count and loaded reply text.
+
+Newly collected parent comments and replies are highlighted, and sync reports both counts. Update markers persist in each entry's comment file across restarts. **Clear update markers** clears markers for the selected entry or overview group without deleting comments or notes. “New” means first collected locally, not necessarily recently posted; first imports mark all imported content as new.
+
+The **Appearance** tab offers 10 themes: Default night, Whale in the stars, Fresh woodland, Clear daylight, Warm lanterns, Glacial water, Sakura blush, Washi journal, Violet lightning and Golden stone. Click a palette preview card to switch. Themes vary their backgrounds, borders and corner styles; five colors remain customizable.
+
+There are 12 optional animations: blue whales, hearts, stars, amber butterflies, water/bubbles, leaves, petals, snowflakes, violet bolts, lanterns, digital crystals and dream butterflies. All graphics are local SVG silhouettes; reference character portraits and official logos are not bundled. Legacy pufferfish settings migrate to blue whales. Particles use evenly staggered phases, and color changes do not restart them. Animation is off by default, ignores clicks, pauses in background tabs and hides for reduced-motion preferences. Reset restores the default. Browser preferences are excluded from distribution packages. Maintain readable contrast when choosing custom colors.
+
+New-comment/reply totals appear inside the filter toolbar. New parent comments, threads containing marked replies and individual marked replies have distinct markers.
+
+## Saved notes and management
 
 Notes span all registered levels. Edits save after about 0.6 seconds or when the field loses focus. Drafts survive rerendering within the current page; save failures are reported. Wait for saving to finish before closing or refreshing. Note writes and removals are serialized, and CSV export waits for pending saves. Comment and saved timestamps use the device’s local timezone. Add personal text, group notes by game and/or region, or jump back to the source comment. A saved comment snapshot remains available even if the source comment disappears. Notes CSV includes the game, region and comment information alongside your own note.
 
@@ -101,13 +119,14 @@ To inspect local proxy detection, run `node app/collect.js proxy`. Diagnostic ou
 
 ## Files and optional commands
 
-The top level contains only the EXE, the two READMEs, and the `app/`, `config/`, `data/` folders. Keep them together. Compatibility launch scripts are inside `app/`.
+The program consists of the EXE and complete `app/` folder; working configuration and collections live in `config/` and `data/`. Publication also includes license, release notes and verification files; see the [delivery inventory](app/docs/RELEASE-CHECK.md). Compatibility launch scripts are inside `app/`.
 
 | File | Purpose |
 |---|---|
 | `Miliastra Wonderland Comment Collector.exe` | Windowless Windows launcher |
 | `app/assets/` | Application icon assets |
 | `app/app.html`, `app/i18n.js`, `app/onboarding.js`, `app/batch-add.js` | Interface, translations and first-run guide |
+| `app/appearance.js` | Themes, particles and hover preferences |
 | `app/server.js` | Local HTTP service |
 | `app/collect.js` | Collection, synchronization and storage |
 | `app/import-batch.js`, `app/note-store.js` | Multi-region import and serialized note saving |
@@ -145,3 +164,22 @@ Prepare a separate distribution copy when sharing the tool. Review or exclude `d
 Management intentionally displays the local application/data paths. Screenshots of that page can expose your Windows username or folder layout. Review screenshots and diagnostic output before posting them. The examples in these READMEs use generic placeholders and do not require your personal paths or credentials.
 
 Use collected public content responsibly and respect the platform's rules and other users' privacy.
+
+## Update views, reply context and hover feedback
+
+**Updates first** is enabled on each page load. It promotes marked parent comments and threads containing marked replies. With newest-first time sorting, available marked comment/reply timestamps order that section. Turning it off restores the selected sort. **Updates only** defaults to off and combines with search, rating, template and date filters. Unmarked ancestors may remain as necessary reply context. Comment CSV export follows the same marked reply/context rules.
+
+Update IDs persist in each entry's comments.json. Repeated sync adds new IDs without replacing older update markers. Reopening the page/browser or restarting the service preserves them until **Clear update markers** is used. This clears the selected entry, or the entire overview group, regardless of active filters. The sync status separately reports items added by that particular sync; this is not the update-marker total.
+
+Reply rows separate author, addressee and body. Actual nested data is indented. Hovering or focusing a row highlights posts by its addressed user within that thread. Some responses identify only a user, not an exact target reply; several posts may match. These highlights do not assert an exact parent relationship.
+
+Appearance settings offer automatic hover feedback, a custom hover background, and a preview button. Automatic feedback follows theme and rating-button colors. Custom feedback chooses black or white text for contrast. Preferences stay in this browser; resetting returns to automatic mode. Disabled buttons do not show actionable hover feedback.
+
+Bodies explicitly allow browser translation. Translation remains the browser/service's responsibility; short strings, names or unrecognized text such as “Yuiop” may remain unchanged. Chrome supports translating selected text; see [Chrome translation help](https://support.google.com/chrome/answer/173424?hl=en). Local source comments are unchanged.
+
+
+Comment/reply updates identify content newly saved by sync since its markers were last cleared. They do not track reading or detect author edits. Viewing or expanding does not clear markers. Clearing markers keeps all content. The legacy internal unread field is retained for backward compatibility; no data migration is needed.
+
+Direct replies to the main comment no longer show a redundant target label. An addressee label appears only when supplied by the service. Hide-default controls follow the theme in normal, selected, hover and focus states; custom hover colors also apply.
+
+The header slides away when scrolling down into the reading area, and returns when scrolling up or reaching the top. Menus, dialogs, tutorials and keyboard navigation keep controls accessible. Small movements use hysteresis; reduced-motion preferences remove the animation. Desktop and narrow layouts share this behavior.

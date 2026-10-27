@@ -64,6 +64,11 @@ test('总览星标键按区服隔离，其他组便签不混入',async()=>{
   await vm.runInContext('loadNotes()',c)
   assert.equal(c.state.notes.length,2);assert.equal(c.state.noteKeys.size,2)
   assert.ok(c.state.noteKeys.has(vm.runInContext("overviewReplyKey('B','same')",c)))
+  assert.equal(c.state.games.find(g=>g.name==='A').noteCount,1)
+  assert.equal(c.state.games.find(g=>g.name==='B').noteCount,1)
+  c.fetch=async()=>({ok:true,json:async()=>({notes:[]})})
+  await vm.runInContext('loadNotes()',c)
+  assert.ok(c.state.games.every(g=>g.noteCount===0))
 })
 test('分组下拉总览置顶，选择单服退出总览，CSV 导出包含关卡及区服',()=>{
   assert.ok(html.indexOf('box.append(overview)')<html.indexOf('for (const [g, i] of members)'))
@@ -88,4 +93,26 @@ test('删除最后一个分组后禁用同步；同步期间切换视图不会�
   for(const id of ['btnSync','btnFull','btnSyncGroup','btnGroupFull'])assert.equal(nodes[id].disabled,true,id)
   c.polling=null;c.state.games=[];c.state.groupOverview=null;vm.runInContext('updateGroupBtn()',c)
   for(const id of ['btnSync','btnFull','btnSyncGroup','btnGroupFull','btnGroup'])assert.equal(nodes[id].disabled,true,id)
+})
+test('新增评论与多层新回复标记按持久 ID 计算，已读后清除，子评论排序按数量',()=>{
+  const c=context();c.raw={unread:{comments:['first'],subReplies:['nested']},replies:[
+    {reply_id:'first',content:'New comment',created_at:10,reply_stat:{reply_count:'1'},sub_replies:[]},
+    {reply_id:'older',content:'Old comment',created_at:1,reply_stat:{reply_count:'3'},sub_replies:[{reply_id:'child',sub_replies:[{reply_id:'nested'}]}]},
+  ]}
+  c.state.data=vm.runInContext('buildData(raw)',c)
+  assert.equal(c.state.data.replies[0]._isNew,true);assert.equal(c.state.data.replies[1]._newSubCount,1)
+  c.state.q='';c.state.mood='all';c.state.sort='replies_desc';c.matchMood=()=>true
+  extract(c,'function filtered()','// 模板名');assert.equal(vm.runInContext('filtered()[0].reply_id',c),'older')
+  c.raw.unread={comments:[],subReplies:[]};c.state.data=vm.runInContext('buildData(raw)',c)
+  assert.ok(c.state.data.replies.every(r=>!r._isNew&&!r._newSubCount))
+})
+test('回复串使用默认收起的原生 details，多层嵌套受限且回复目标不作为 HTML 插入',()=>{
+  assert.match(html,/createElement\('details'\)/);assert.doesNotMatch(html,/thread\.open\s*=\s*true/)
+  const c=context();extract(c,'function visibleSubReplies','function renderSubReplies')
+  c.rows=[{reply_id:'1',sub_replies:[{reply_id:'2'}]},null,{reply_id:'1'}]
+  assert.deepEqual(Array.from(vm.runInContext('visibleSubReplies(rows)',c),x=>[x.row.reply_id,x.depth]),[['1',0],['2',1]])
+  assert.match(html,/author\.textContent=\(row.user_info/)
+  assert.doesNotMatch(html,/target\.innerHTML\s*=/)
+  assert.match(html,/text\.textContent=row.content/)
+  assert.match(html,/thread\.dataset\.parentReplyId/)
 })

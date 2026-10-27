@@ -6,7 +6,15 @@ Run from the project root with Node.js 18 or newer:
 node --test app/tests/*.test.cjs
 ```
 
-The 2026-10-27 regression contains 98 passing tests, including subtests. Tests use isolated temporary data; do not point fixtures at a working installation's data directory.
+The 2026-10-27 regression contains 115 passing tests, including subtests. Tests use isolated temporary data; do not point fixtures at a working installation's data directory.
+
+## Reply collection and appearance
+
+Theme regression exercises light-to-default restoration and repeated preset/custom-to-default transitions, asserting removal of `--text`, `--bg` and related overrides while preserving unrelated layout variables. Browser verification also checks actual computed colors. Reply response tests reject explicit mismatched level/parent IDs without altering files; reply rendering separates author, target and body and exposes the parent identity in the collapsed summary.
+
+`subreplies.test.cjs` verifies official parent IDs, pagination and server cursor order, deduplication, incomplete repeated cursors, preservation after failure, deletion during an in-flight request, shared refresh jobs, unknown-parent rejection and nested cycles. The API fixture exposes paginated replies, newly added replies on a previously zero-reply parent, and explicit reply failures. Integration tests verify automatic collection, persistent update markers, explicit marker clearing, retry and partial-failure reporting. Overview tests cover new-item markers, reply-count sorting and collapsed threads.
+
+`appearance.test.cjs` verifies defaults, valid preset colors, browser-local preference round trips, and rejection of CSS/URL injections. Browser checks cover theme persistence/reset, bounded noninteractive particles, multilingual layout and collapsed/expanded reply rendering. China public replies were also verified read-only against a three-reply sample; a global-region endpoint returned an empty, successful reply list, which does not constitute a live nonempty global-pagination verification.
 
 ## Group overview combinations
 
@@ -37,3 +45,22 @@ The real-service integration test verifies that foreign-origin deletion, group d
 ## Publication checks
 
 `release-files.test.cjs` compiles every JavaScript source and HTML inline script without running it, checks local script/icon assets and Markdown links, scans source/docs for known personal absolute paths and private-key headers, verifies the MIT license file and English launcher references, and verifies that all 15 overview labels use a short title. The same complete regression is run from a clean generated release directory. This is a targeted publication check, not a guarantee that arbitrary future uploads contain no sensitive data.
+
+## Reference-inspired theme regression
+
+`appearance.test.cjs` checks ten presets, twelve effects, legacy fish-to-whale migration, invalid settings, light/default switching, body/author contrast (at least 4.5:1 against preset panels and cards), and a 30-minute phase simulation sampled every half second. This is a deterministic animation-phase check, not a 30-minute real-time browser soak.
+
+Visual QA uses a separate mock-data service. Check all themes in comments, appearance, notes, management and add dialogs; inspect actual computed body colors, toolbar update totals, parent/new-reply markers, native reply collapse, and narrow-screen overflow. Check every SVG effect renders, remains click-through, and preserves phase when changing colors. Verify the clean release has an empty registration list and no user comments or credentials.
+
+Combination QA also checks that adding/removing notes updates management counts after switching tabs. Sharing guidance in all 15 languages points to the clean-release script instead of deleting the working collection.
+
+## Update markers, relationships and hover regression
+
+unread-view.test.cjs verifies old-parent/new-reply priority, normal-order restoration, combined filters, preserved legacy update metadata, branch/context retention, empty views after marker clearing, row indentation, addressee highlighting and translatable body nodes. Appearance tests cover old preference migration, hover color validation and black/white text selection. API integration checks repeated sync retains previous update IDs, zero additions are reported, and markers are stored on disk.
+
+Browser QA checks all ten automatic hover themes, custom white hover with black text, close/reopen plus repeated sync, updates-only view, addressee hover/focus highlighting, actual nested indentation, narrow layouts and update-marker clearing. Browser translation quality for arbitrary words is outside these tests.
+
+The public terminology is now updates, not unread. Existing unread storage/API names and test filenames remain for compatibility. Verify all 15 live dictionaries use update terminology, normal replies have no main-comment target chip, and hide-default normal/checked/hover/focus states follow all ten themes. Combined-filter, nested-context, marker persistence and explicit clearing tests still apply.
+
+reading-header.test.cjs checks downward hiding, upward reveal, top-of-page behavior, small-scroll hysteresis, interaction locks and tall narrow-screen headers. Browser combination tests additionally cover actual PageDown/PageUp, open selector protection, group sync while editing a note, stable management table columns across collapse, all 15 update labels, all ten hide-default palettes and custom hover colors.
+

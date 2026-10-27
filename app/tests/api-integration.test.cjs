@@ -15,7 +15,7 @@ test('真实本地服务：导入、同步、便签、分组、异常输入及�
   async function sync(body){const start=await call('/api/sync',body);assert.equal(start.data.ok,true);for(let i=0;i<120;i++){const progress=await call('/api/progress');if(!progress.data.running)return progress.data;await pause(25)}throw Error('Sync timeout')}
   let a,b,c
   await t.test('资源、中文路径及初始 BOM 索引正常',async()=>{
-    for(const url of ['/','/i18n.js','/onboarding.js','/batch-add.js','/note-store.js','/app.ico'])assert.equal((await fetch(base+url)).status,200,url)
+    for(const url of ['/','/i18n.js','/onboarding.js','/batch-add.js','/note-store.js','/appearance.js','/app.ico'])assert.equal((await fetch(base+url)).status,200,url)
     assert.equal((await call('/api/games')).data.games.length,0)
   })
   await t.test('空输入、伪 ID、未知区服和不存在关卡不登记',async()=>{
@@ -38,6 +38,37 @@ test('真实本地服务：导入、同步、便签、分组、异常输入及�
   await t.test('按组同步跨服集合、重复同步不重复评论',async()=>{
     let p=await sync({names:[a.name,b.name,c.name]});assert.equal(p.results.length,3);assert.ok(p.results.every(x=>x.count===6))
     p=await sync({name:a.name});assert.equal(p.results[0].count,6)
+  })
+  await t.test('自动补齐分页子评论、旧零回复评论的新回复、失败提示与持久已读状态',async()=>{
+    let data=(await call('/api/comments?name='+encodeURIComponent(a.name))).data
+    assert.equal(data.replies.find(r=>r.reply_id==='reply-3').sub_replies.length,3)
+    assert.equal(data.replies.find(r=>r.reply_id==='reply-3').subReplyFetch.complete,true)
+    assert.equal(data.unread.comments.length,6);assert.equal(data.unread.subReplies.length,3)
+    const priorUnread=JSON.parse(JSON.stringify(data.unread))
+    const repeat=await sync({name:a.name});assert.equal(repeat.results[0].added,0);assert.equal(repeat.results[0].addedSubReplies,0)
+    data=(await call('/api/comments?name='+encodeURIComponent(a.name))).data
+    assert.deepEqual(data.unread,priorUnread,'重复同步不能清空或覆盖待处理未读')
+    const disk=JSON.parse(fs.readFileSync(require(path.join(dir,'app','collect.js')).gameFile(a.name),'utf8'))
+    assert.equal(disk.unread.comments.length,6,'未读写入磁盘，不依赖网页内存')
+    await call('/api/mark-read',{names:[a.name]})
+    let result=await sync({name:a.name});assert.equal(result.results[0].addedSubReplies,0,JSON.stringify(result.results))
+    data=(await call('/api/comments?name='+encodeURIComponent(a.name))).data;assert.equal(data.unread.subReplies.length,0)
+    fs.writeFileSync(path.join(dir,'phase.json'),'{"phase":3}')
+    result=await sync({name:a.name});assert.equal(result.results[0].added,0);assert.equal(result.results[0].addedSubReplies,3)
+    data=(await call('/api/comments?name='+encodeURIComponent(a.name))).data
+    assert.equal(data.replies.find(r=>r.reply_id==='reply-1').sub_replies.length,2)
+    assert.equal(data.unread.comments.length,0);assert.equal(data.unread.subReplies.length,3)
+    assert.deepEqual(data.unread.parents.slice().sort(),['reply-1','reply-3'])
+    fs.writeFileSync(path.join(dir,'phase.json'),'{"phase":4}')
+    result=await sync({name:a.name});assert.ok(result.results[0].subReplyFailed>0)
+    data=(await call('/api/comments?name='+encodeURIComponent(a.name))).data
+    assert.equal(data.replies.find(r=>r.reply_id==='reply-1').sub_replies.length,2)
+    assert.equal(data.replies.find(r=>r.reply_id==='reply-1').subReplyFetch.complete,false)
+    fs.writeFileSync(path.join(dir,'phase.json'),'{"phase":1}')
+    const refreshed=await call('/api/sub-replies',{name:a.name,replyId:'reply-3'})
+    assert.equal(refreshed.data.complete,true);assert.equal(refreshed.data.replies.length,3)
+    assert.equal((await call('/api/sub-replies',{name:a.name,replyId:'missing'})).data.ok,false)
+    assert.equal((await call('/api/mark-read',{names:'invalid'})).status,400)
   })
   await t.test('便签增改、相同编号跨关卡隔离、移除和迟到更新',async()=>{
     for(const name of [a.name,b.name])assert.equal((await call('/api/notes',{name,note:{replyId:'reply-3',floorId:3,content:'Snapshot',text:'First'}})).data.ok,true)
@@ -156,3 +187,4 @@ test('真实本地服务：导入、同步、便签、分组、异常输入及�
     assert.equal((await call('/api/notes',{name:a.name,note:{replyId:'reply-3',text:'After delete'}})).data.ok,false)
   })
 })
+

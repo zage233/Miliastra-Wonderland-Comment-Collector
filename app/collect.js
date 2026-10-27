@@ -996,7 +996,7 @@ async function syncGame(cookie, entry, opts = {}) {
   let prevShortfall = null
   if (fs.existsSync(file)) {
     try {
-      const prev = JSON.parse(fs.readFileSync(file, 'utf8'))
+      const prev = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''))
       existing = prev.replies || []
       prevShortfall = prev.shortfall || null
     } catch { existing = [] }
@@ -1019,8 +1019,7 @@ async function syncGame(cookie, entry, opts = {}) {
 
   const merged = new Map()
   // 同一条评论可能从不同排序各返回一次，而两份的子评论数量不一样：
-  //   时间序（FLOOR_DESC）给的 sub_replies 是完整的；
-  //   热门序（HOT）只给一个预览（实测 120 行里声明 90 条子回复，内联只给 8 条）。
+  //   时间序与热门序都可能只返回预览，普通同步随后会单独分页补齐子回复。
   // 所以不能「谁先到谁赢」，要让**子评论更多的那份**覆盖。
   //
   // 但**字段**要以服务端这次返回的为准：点赞数、正文被改过、评级变了都得刷新生效。
@@ -1072,7 +1071,7 @@ async function syncGame(cookie, entry, opts = {}) {
   let streamInfo = ''
   let streamItems = []   // 结构化版本：[{ shard: 1, pages: 3 }] / [{ hot: true, pages: 2 }] / [{ incr: true, pages: n }]
 
-  if (incremental) {
+  if (incremental && !opts.includeSubReplies) {
     // 增量：新评论在楼层最高的地方，从顶部往下翻，连续 2 页都是本地已有的就停。
     // 通常 2-3 个请求、1-2 秒。
     const r = await walkStream(cookie, entry, {
@@ -1149,6 +1148,42 @@ async function syncGame(cookie, entry, opts = {}) {
   }
 
   const replies = [...merged.values()].sort((a, b) => (b.floor_id || 0) - (a.floor_id || 0))
+  let subReplyFailed = 0
+  if (opts.includeSubReplies) {
+    const targets = replies.filter(r => Number((r.reply_stat || {}).reply_count) > 0 || (r.sub_replies || []).length)
+    let position = 0
+    await Promise.all(Array.from({ length: Math.min(3, targets.length) }, async () => {
+      while (position < targets.length) {
+        if (subReplyFailed >= 3) break
+        const parent = targets[position++]
+        try {
+          const result = await downloadSubReplies(entry, String(parent.reply_id || parent.floor_id), cookie)
+          parent.sub_replies = result.complete ? result.replies : mergeSubReplies(parent.sub_replies, result.replies)
+          parent.subReplyFetch = { fetchedAt: new Date().toISOString(), complete: result.complete, count: result.replies.length }
+          if (!result.complete) subReplyFailed++
+        } catch (error) {
+          subReplyFailed++
+          parent.subReplyFetch = { fetchedAt: new Date().toISOString(), complete: false, error: String(error.message || error) }
+        }
+      }
+    }))
+    for (const parent of targets.slice(position)) { parent.subReplyFetch = { fetchedAt: new Date().toISOString(), complete: false, error: 'Stopped after repeated failures' }; subReplyFailed++ }
+  }
+  let previousUnread = { comments: [], subReplies: [], parents: [] }
+  try { previousUnread = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '')).unread || previousUnread } catch {}
+  const oldChildIds = new Set(existing.flatMap(r => flattenSubReplies(r.sub_replies)).map(r => String(r.reply_id || r.floor_id)))
+  const newComments = replies.filter(r => !knownIds.has(idOf(r))).map(idOf)
+  const newSubReplies = [], newSubParents = []
+  for (const parent of replies) for (const child of flattenSubReplies(parent.sub_replies)) {
+    const id = String(child.reply_id || child.floor_id)
+    if (!oldChildIds.has(id)) { newSubReplies.push(id); newSubParents.push(idOf(parent)) }
+  }
+  const visibleComments = new Set(replies.map(idOf)), visibleChildren = new Set(replies.flatMap(r => flattenSubReplies(r.sub_replies)).map(r => String(r.reply_id || r.floor_id)))
+  const unread = {
+    comments: [...new Set([...(previousUnread.comments || []), ...newComments])].filter(id => visibleComments.has(id)),
+    subReplies: [...new Set([...(previousUnread.subReplies || []), ...newSubReplies])].filter(id => visibleChildren.has(id)),
+    parents: [...new Set([...(previousUnread.parents || []), ...newSubParents])].filter(id => visibleComments.has(id)),
+  }
 
   // 关卡信息（名字 / 好评率 / 分类），取不到不影响评论
   let levelInfo = null
@@ -1179,11 +1214,11 @@ async function syncGame(cookie, entry, opts = {}) {
     // （服务端 total 有时含已删除楼层，永远补不齐）
     shortfall: (total != null && replies.length < total) ? { total, seen: replies.length } : null,
     levelInfo,
-    replies,
+    replies, unread, subReplyFailed,
   }
   writeJsonAtomic(file, payload)
 
-  const added = replies.length - existing.length
+  const added = newComments.length
   emit(L('log.count', { total, local: replies.length },
       '    ✓ 服务端计数 ' + total + '　本地 ' + replies.length + ' 条' + (added > 0 ? '（新增 ' + added + '）' : '')))
     if (added > 0) emit(L('log.added', { n: added }, '    （新增 ' + added + '）'))
@@ -1195,7 +1230,8 @@ async function syncGame(cookie, entry, opts = {}) {
   } else if (gap > 0) {
     emit(L('log.normalGap', { n: gap }, '    计数差 ' + gap + ' 条属正常：服务端 total 含已删除或隐藏楼层。'))
   }
-  return { entry, count: replies.length, total, added, levelInfo }
+  emit(L('log.subSummary', { n: newSubReplies.length, failed: subReplyFailed }, '    新增子评论 ' + newSubReplies.length + '，未完成的评论串 ' + subReplyFailed))
+  return { entry, count: replies.length, total, added: newComments.length, addedSubReplies: newSubReplies.length, subReplyFailed, levelInfo }
 }
 
 /* ══════════════════════ 便签 ══════════════════════ */
@@ -1643,7 +1679,7 @@ async function main() {
     if (cookie) console.log('（检测到 cookie.txt，将带上登录凭据）')
     const results = []
     for (const g of targets) {
-      try { results.push(await syncGame(cookie, g, { full })) }
+      try { results.push(await syncGame(cookie, g, { full, includeSubReplies: true })) }
       catch (err) {
         const msg = err && err.message ? err.message : String(err)
         emit(L('log.failed', { msg }, '    ✗ 失败：' + msg))
@@ -1669,6 +1705,91 @@ async function main() {
   console.log('  node app/collect.js templates                按语言列出重复出现的句子（补全默认模板用）')
 }
 
+const subReplyJobs = new Map()
+function flattenSubReplies(rows) {
+  const result = [], seen = new Set(), stack = (rows || []).slice().reverse()
+  while (stack.length && result.length < 10000) {
+    const row = stack.pop()
+    if (!row) continue
+    const id = row.reply_id ? String(row.reply_id) : row
+    if (seen.has(id)) continue
+    seen.add(id); result.push(row)
+    stack.push(...(row.sub_replies || []).slice().reverse())
+  }
+  return result
+}
+function mergeSubReplies(oldRows, newRows) { return [...new Map([...(oldRows || []), ...newRows].map(r => [String(r.reply_id || r.floor_id), r])).values()] }
+async function fetchSubReplies(name, replyId) {
+  const key = JSON.stringify([name, String(replyId)])
+  if (subReplyJobs.has(key)) return subReplyJobs.get(key)
+  const task = fetchSubRepliesOnce(name, String(replyId))
+  subReplyJobs.set(key, task)
+  try { return await task } finally { subReplyJobs.delete(key) }
+}
+async function fetchSubRepliesOnce(name, replyId) {
+  const entry = loadIndex().games.find(g => g.name === name)
+  if (!entry) throw new Error('Registered entry not found')
+  const file = gameFile(name)
+  const snapshot = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''))
+  if (!(snapshot.replies || []).some(r => String(r.reply_id || r.floor_id) === replyId)) throw new Error('Parent comment not found')
+  const { replies, complete } = await downloadSubReplies(entry, replyId, loadOptionalCookie())
+  const current = loadIndex().games.find(g => g.name === name)
+  if (!current || current.levelId !== entry.levelId || current.region !== entry.region) throw new Error('Registered entry changed')
+  const latest = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''))
+  const parent = (latest.replies || []).find(r => String(r.reply_id || r.floor_id) === replyId)
+  if (!parent) throw new Error('Parent comment no longer exists')
+  const oldIds = new Set(flattenSubReplies(parent.sub_replies).map(r => String(r.reply_id || r.floor_id)))
+  parent.sub_replies = complete ? replies : mergeSubReplies(parent.sub_replies, replies)
+  parent.subReplyFetch = { fetchedAt: new Date().toISOString(), complete, count: replies.length }
+  const fresh = flattenSubReplies(parent.sub_replies).map(r => String(r.reply_id || r.floor_id)).filter(id => !oldIds.has(id))
+  latest.unread = latest.unread || { comments: [], subReplies: [], parents: [] }
+  latest.unread.subReplies = [...new Set([...(latest.unread.subReplies || []), ...fresh])]
+  if (fresh.length) latest.unread.parents = [...new Set([...(latest.unread.parents || []), replyId])]
+  writeJsonAtomic(file, latest)
+  return { ok: true, replies: parent.sub_replies, complete, newIds: fresh }
+}
+async function downloadSubReplies(entry, replyId, cookie) {
+  const profile = profileOf(entry.region), headers = headersFor(entry.region)
+  if (cookie) headers.cookie = cookie
+  const signal = AbortSignal.timeout(30000), rows = new Map(), cursors = new Set()
+  let next = '', sortType = 'SORT_TYPE_FLOOR_DESC', complete = false, truncated = false
+  for (let page = 0; page < 50 && rows.size < 1000; page++) {
+    const cursorKey = JSON.stringify([next, sortType])
+    if (cursors.has(cursorKey)) break
+    cursors.add(cursorKey)
+    const text = await requestText(profile.base + '/community/ugc_community/web/api/level/reply/sub_replies?lang=' + profile.lang, {
+      method: 'POST', headers, signal, timeoutSec: 12, validate: jsonValidator('子评论'),
+      body: JSON.stringify({ parent_reply_id: replyId, uid: '', region: entry.region, level_id: entry.levelId,
+        cursor: { next, size: 15, sort_type: sortType } }),
+    })
+    const data = JSON.parse(text).data
+    if (!data || !Array.isArray(data.reply_list)) throw new Error('Invalid sub-reply response')
+    for (const row of data.reply_list) {
+      if (!row || typeof row !== 'object') throw new Error('Invalid sub-reply item')
+      if (row.level_id !== undefined && String(row.level_id) !== String(entry.levelId)) throw new Error('Sub-reply belongs to a different level')
+      if (row.parent_reply_id !== undefined && String(row.parent_reply_id) !== replyId) throw new Error('Sub-reply belongs to a different parent')
+      const id = String(row.reply_id || row.floor_id || '')
+      if (id && (rows.has(id) || rows.size < 1000)) rows.set(id, row)
+      else if (id) truncated = true
+    }
+    if (!data.cursor || typeof data.cursor.has_more !== 'boolean') throw new Error('Invalid sub-reply cursor')
+    if (!data.cursor.has_more) { complete = !truncated; break }
+    if (!data.reply_list.length || !data.cursor.next) break
+    next = String(data.cursor.next); sortType = data.cursor.sort_type || sortType
+  }
+  return { replies: [...rows.values()], complete }
+}
+function markRead(names) {
+  const allowed = loadIndex().games.filter(g => names.includes(g.name))
+  for (const g of allowed) {
+    const file = gameFile(g.name)
+    if (!fs.existsSync(file)) continue
+    const data = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''))
+    data.unread = { comments: [], subReplies: [], parents: [] }; writeJsonAtomic(file, data)
+  }
+  return { ok: true }
+}
+
 module.exports = {
   ROOT, DATA_DIR,
   loadIndex, saveIndex, gameDir, gameFile, notesFile,
@@ -1689,7 +1810,7 @@ module.exports = {
   // 判死列表：导出来方便自检/测试（系统代理挂了要能轮到 proxy.txt 和扫端口）
   markProxyDead, isProxyDead,
   invalidateProxyCache,
-  requestText, jsonValidator, fetchPage,
+  requestText, jsonValidator, fetchPage, fetchSubReplies, downloadSubReplies, flattenSubReplies, markRead,
   worthOtherRoute, isRegionBlock,
 }
 

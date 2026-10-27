@@ -36,7 +36,8 @@ internal static class Program
                 if (!File.Exists(source) || !File.Exists(Path.Combine(app, "app.html")) ||
                     !File.Exists(Path.Combine(app, "collect.js")) || !File.Exists(Path.Combine(app, "i18n.js")) ||
                     !File.Exists(Path.Combine(app, "onboarding.js")) || !File.Exists(Path.Combine(app, "batch-add.js")) ||
-                    !File.Exists(Path.Combine(app, "import-batch.js")) || !File.Exists(Path.Combine(app, "note-store.js")))
+                    !File.Exists(Path.Combine(app, "import-batch.js")) || !File.Exists(Path.Combine(app, "note-store.js")) ||
+                    !File.Exists(Path.Combine(app, "appearance.js")))
                     throw new InvalidOperationException("缺少 app 程序文件夹或文件不完整。请保留 EXE 旁的 app、config、data 文件夹，不要只复制 EXE。");
 
                 string node = FindNode(root);

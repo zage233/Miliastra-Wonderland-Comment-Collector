@@ -12,6 +12,8 @@ Request bodies are JSON objects. Responses are JSON except for the interface, Ja
 
 ## Request security
 
+Reply items carrying `level_id` or `parent_reply_id` must match the requested registered level and parent. A mismatch rejects that refresh without replacing the existing thread. Some official payloads omit these fields (or expose only `f_reply_id`/`r_user`), so the collector does not invent missing parent relationships; UI summaries retain the known requested parent floor and author.
+
 Requests must use `127.0.0.1` or `localhost` with the actual listening port in Host. If Origin is present, it must exactly match that HTTP origin; null, foreign and different-port origins are rejected. Fetch Metadata values other than `same-origin` or `none` are rejected. Rejections return HTTP 403 before reaching the API handler. Browser preflight requests do not grant cross-origin access.
 
 POST/PUT/PATCH/DELETE requests require `Content-Type: application/json` (optional charset accepted), otherwise HTTP 415. `/api/ping` and `/api/bye` are exempt from that content-type rule to support page-close beacons, but all host/origin/Fetch Metadata checks still apply. CLI clients may omit Origin and Fetch Metadata, and must send JSON for normal write APIs. There is no authentication boundary against other local processes.
@@ -19,6 +21,12 @@ POST/PUT/PATCH/DELETE requests require `Content-Type: application/json` (optiona
 CSV escaping is performed in the interface for both comment and note exports. Cells beginning with formula markers (including markers after whitespace/control characters), or leading tab/line-break characters, receive an apostrophe before CSV quoting. Stored content is not modified.
 
 ## Endpoints
+
+POST `/api/sub-replies` takes `{name, replyId}` for a registered, locally stored parent comment. It paginates the corresponding official `/web/api/level/reply/sub_replies` endpoint using `parent_reply_id`, preserves server-provided cursor ordering, deduplicates IDs and atomically saves the result. It returns `{ok, replies, complete, newIds}`. A duplicate refresh shares the same in-flight task; registration and parent existence are checked again before saving, preventing deletion resurrection. This refresh is blocked while sync runs, and sync is blocked while an individual refresh runs.
+
+POST `/api/mark-read` takes `{names: [...]}` and clears update-marker IDs for those registered entries. The legacy route/storage names are retained for compatibility; this does not record whether content has been read. It is blocked during sync/reply refresh. Both endpoints require the same Host/Origin/JSON protections as other write APIs. `/api/progress` additionally returns `addedSubReplies` and `subReplyFailed` per entry. A nonzero failure count means reply collection is incomplete even if parent comments were saved successfully.
+
+Normal UI and CLI sync enable reply collection, revisiting the parent index to discover replies on old comments. Per-thread safeguards are 30 seconds, 50 pages and 1,000 replies; repeated cursors stop traversal. After three batch failures, unattempted threads are marked incomplete. `subReplyFetch` records thread completion; `unread: {comments, subReplies, parents}` persists newly collected IDs. These are additive fields in the existing comments JSON format. `appearance.js` is a local static resource; appearance preferences are browser-only (`qx-appearance-v1`) and never sent to the server.
 
 | Method and path | Input | Result |
 |---|---|---|

@@ -26,4 +26,21 @@ $licenseFile = Join-Path $sourceDirectory 'LICENSE'
 if (Test-Path -LiteralPath $licenseFile) {
     Copy-Item -LiteralPath $licenseFile -Destination $OutputDirectory
 }
+$attributesFile = Join-Path $sourceDirectory '.gitattributes'
+if (Test-Path -LiteralPath $attributesFile) {
+    Copy-Item -LiteralPath $attributesFile -Destination $OutputDirectory
+} else {
+    Set-Content -LiteralPath (Join-Path $OutputDirectory '.gitattributes') -Encoding utf8 -Value '* -text'
+}
+# Static files are covered; mutable user directories are checked separately by --clean.
+$manifestRoot = (Resolve-Path -LiteralPath $OutputDirectory).Path.TrimEnd('\','/')
+$manifestLines = foreach ($file in (Get-ChildItem -LiteralPath $OutputDirectory -File -Recurse -Force | Sort-Object FullName)) {
+    $relative = $file.FullName.Substring($manifestRoot.Length + 1).Replace('\','/')
+    if ($relative -eq 'app/docs/SHA256SUMS.txt' -or $relative -match '^(config|data|release|\.git)/') { continue }
+    '{0}  {1}' -f (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $relative
+}
+Set-Content -LiteralPath (Join-Path $OutputDirectory 'app\docs\SHA256SUMS.txt') -Value $manifestLines -Encoding utf8
+$nodeRuntime = Get-Command node -ErrorAction Stop
+& $nodeRuntime.Source (Join-Path $OutputDirectory 'app\launcher\verify-release.cjs') --clean
+if ($LASTEXITCODE -ne 0) { throw 'Distribution verification failed. Do not upload this directory.' }
 Write-Output $OutputDirectory
