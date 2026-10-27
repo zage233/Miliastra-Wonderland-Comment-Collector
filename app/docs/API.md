@@ -1,5 +1,11 @@
 # Local API and storage reference
 
+## Group review overview
+
+The all-region overview is a virtual client view; it adds no endpoint or storage file. It loads `/api/comments?name=...` for each nonempty registered entry in the selected group and submits all group entry names to `/api/sync` via `names` (plus `full: true` for full refresh). Empty entries are included in sync so first-time downloads work. Review identity is the pair of registered entry name and original reply ID; note writes still use the original entry and ID. A member read failure is reported instead of showing an incomplete overview. Comment CSV includes game and region columns for both individual and combined views.
+
+After membership changes, the client reloads registered entries and rebuilds the selected overview. Removing its anchor entry selects another member. A successful rename or merge transfers the selected overview to the destination group. A removed group falls back to an available individual entry; an empty registry clears the view and disables sync. See [regression coverage](TESTING.md) for the removal, re-import, split, rename, merge and empty-registry sequence.
+
 These endpoints belong to the local service in [server.js](../server.js). They are not the official remote API. Start from the tool root with `node app/server.js --no-open --stay` for diagnostics. The service listens only on `127.0.0.1`; use the URL printed at startup because an occupied port may cause a fallback.
 
 Request bodies are JSON objects. Responses are JSON except for the interface, JavaScript and icon resources. An HTTP 200 response can still contain `ok: false`; check the response body. Storage errors return HTTP 500 and `errorKey: "error.storage"` without clearing the damaged file.

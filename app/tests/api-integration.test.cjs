@@ -1,6 +1,7 @@
 'use strict'
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os'),net=require('node:net'),{spawn}=require('node:child_process'),{once}=require('node:events')
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms))
+const vm=require('node:vm')
 test('真实本地服务：导入、同步、便签、分组、异常输入及多功能交叉',async t=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'qxqy-api-test-'))
   fs.cpSync(path.resolve(__dirname,'..'),path.join(dir,'app'),{recursive:true})
@@ -74,6 +75,45 @@ test('真实本地服务：导入、同步、便签、分组、异常输入及�
     const files=fs.readdirSync(path.join(dir,'data'));assert.ok(files.some(x=>fs.existsSync(path.join(dir,'data',x,'notes.json'))))
     const readd=(await call('/api/add',{input:'111111111',region:'os_asia'})).data;assert.equal(readd.name,a.name)
     assert.equal((await call('/api/notes?name='+encodeURIComponent(a.name))).data.notes[0].content,'Snapshot')
+  })
+  await t.test('总览交错操作：移除/重加区服、拆分、改名、并组、删除与全部清空后自动修正',async()=>{
+    fs.writeFileSync(path.join(dir,'phase.json'),'{"phase":1}')
+    const html=fs.readFileSync(path.join(__dirname,'..','app.html'),'utf8'),nodes={}
+    const d=(await call('/api/add',{input:'444444444',region:'os_asia',group:'Overview'})).data
+    const e=(await call('/api/add',{input:'555555555',region:'os_euro',group:'Overview'})).data
+    await sync({names:[d.name,e.name]})
+    const front={state:{games:[],gameIdx:0,groupOverview:'Overview',selectOpen:new Set(),loadSeq:0,thr:8},gameLoadSeq:0,
+      fetch:url=>fetch(base+url),groupOf:g=>g.group||g.baseName||g.name,norm:s=>s,classifyKnown:()=>null,t:k=>k,
+      syncGameSelectLabel(){},renderGameSelectPanel(){},updateGroupBtn(){},renderMgmt(){},renderAll(){},loadNotes:async()=>{},regionName:r=>r,
+      lookupErrorText:()=> 'error',setStatus(){},setTimeout,confirm:()=>true,chosenGroup:()=>front.nextGroup,
+      $:id=>nodes[id]||(nodes[id]={close(){}}),postJson:async(url,body)=>(await call(url,body)).data}
+    vm.createContext(front)
+    for(const [start,end] of [['function buildData','function fmtTime'],['function overviewReplyKey','function selectGroupOverview'],['function groupMembers','function selectEntryTab'],['async function loadGames','// 当前选中项'],['async function loadComments','function renderMgmt']]){
+      vm.runInContext(html.slice(html.indexOf(start),html.indexOf(end,html.indexOf(start))),front)
+    }
+    const refresh=async()=>{await vm.runInContext('loadGames(true);',front);await vm.runInContext('loadComments()',front)}
+    await refresh();assert.equal(front.state.data.replies.length,12)
+    await call('/api/remove',{name:d.name,deleteData:false});await refresh()
+    assert.equal(front.state.groupOverview,'Overview');assert.equal(front.state.games[front.state.gameIdx].name,e.name);assert.equal(front.state.data.replies.length,6)
+    await call('/api/add',{input:'444444444',region:'os_asia',group:'Overview'});await refresh();assert.equal(front.state.data.replies.length,12)
+    await call('/api/set-group',{name:e.name,group:'Split'});await refresh();assert.equal(front.state.data.replies.length,6)
+    const start=html.indexOf("$('gpAll').onclick = async () =>")
+    vm.runInContext(html.slice(start,html.indexOf('async function mgmtRemove(',start)),front)
+    front.gpTarget=front.state.games.find(g=>g.name===d.name);front.nextGroup='Renamed'
+    await nodes.gpAll.onclick();assert.equal(front.state.groupOverview,'Renamed');assert.equal(front.state.data.replies.length,6)
+    // Merge a selected overview into an existing group and retain the combined selection.
+    front.gpTarget=front.state.games.find(g=>g.name===d.name);front.nextGroup='Split'
+    await nodes.gpAll.onclick();assert.equal(front.state.groupOverview,'Split');assert.equal(front.state.data.replies.length,12)
+    await call('/api/remove',{name:e.name,deleteData:true});await refresh();assert.equal(front.state.data.replies.length,6)
+    await call('/api/remove-group',{group:'Split',deleteData:false});await refresh()
+    assert.equal(front.state.groupOverview,null);assert.ok(front.state.gameIdx>=0)
+    // Clear only this disposable fixture, and verify no stale overview/selection remains.
+    for(const g of (await call('/api/games')).data.games.filter(g=>g.name!==a.name))await call('/api/remove',{name:g.name,deleteData:false})
+    await refresh();assert.equal(front.state.games.length,1)
+    front.state.groupOverview=front.groupOf(front.state.games[0]);await call('/api/remove',{name:a.name,deleteData:false});await refresh()
+    assert.equal(front.state.groupOverview,null);assert.equal(front.state.gameIdx,-1);assert.equal(front.state.data,null)
+    // Restore the entry needed by the subsequent independent deletion check.
+    await call('/api/add',{input:'111111111',region:'os_asia'})
   })
   await t.test('损坏索引不会清空或使服务崩溃；修复原文件后可继续使用',async()=>{
     const file=path.join(dir,'config','games.json'),original=fs.readFileSync(file,'utf8')

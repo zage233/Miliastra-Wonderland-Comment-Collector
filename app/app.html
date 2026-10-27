@@ -255,6 +255,8 @@
   .gsg.cur{color:var(--accent)}
   .gsg .arw{color:var(--dim2);width:11px;flex:none}
   .gsg .cnt{color:var(--dim2);font-weight:400;margin-left:auto;font-size:11.5px}
+  .gsg .group-name{min-width:0;flex:1;overflow-wrap:anywhere}
+  .gsg .arw,.gsg .cnt{flex-shrink:0}
   .gsi{padding:6px 8px 6px 26px;border-radius:6px;cursor:pointer;font-size:12.5px;color:var(--dim)}
   .gsi:hover{background:var(--panel2);color:var(--text)}
   .gsi.on{background:#1b2635;color:var(--accent);font-weight:600}
@@ -309,6 +311,13 @@
   .gsel{flex:1 1 300px;min-width:0}
   .gsel>button{min-width:0;max-width:none;width:100%;min-height:43px;background:#1d293b;border-color:#3a4a65;font-weight:600}
   #gselLabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gsi.group-overview{display:flex;align-items:center;flex-wrap:wrap;gap:7px 10px;font-weight:600;border:1px solid transparent;border-left:2px solid #596b90;background:#1e2a3b;margin:4px 0 7px 16px;padding:10px 10px;color:var(--text)}
+  .gsi.group-overview:hover{background:#26344b}
+  .gsi.group-overview.on{background:#2b3b59;border-left-color:var(--accent)}
+  .group-overview .overview-name{flex:1 1 120px;min-width:0;overflow-wrap:anywhere}
+  .group-overview .overview-count{font-size:11.5px;font-weight:400;color:var(--dim)}
+  .grprow .gname{max-width:100%;overflow-wrap:anywhere}
+  .gsi.group-overview:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   #btnAdd{background:transparent;color:var(--accent);box-shadow:none;border-color:#526395}
   #btnAdd:hover{background:#26324d}
   .tabs{gap:4px;width:fit-content;padding:3px;margin-bottom:10px;border:1px solid var(--line);border-radius:12px;background:#0e1622}
@@ -996,7 +1005,7 @@ function classifyKnown(k) {
 
 /* 好评/差评直接用接口的 is_recommend 字段 —— 那是官方评级本身，不需要猜测。 */
 const state = {
-  games: [], gameIdx: -1, data: null, notes: [], noteKeys: new Set(),
+  games: [], gameIdx: -1, groupOverview: null, data: null, notes: [], noteKeys: new Set(),
   tab: 'list', mood: 'all', sort: 'floor_desc', q: '', hideDefault: false, thr: 8, shown: 200,
   dateFrom: '', dateTo: '',
   mgmtOpen: new Set(),      // 管理页展开了哪些分组
@@ -1206,7 +1215,7 @@ function buildData(raw) {
     r._rating = r.is_recommend === false ? 'bad' : 'good'
     r._like = +((r.reply_stat && r.reply_stat.like_count) || 0)
     r._subs = r.sub_replies || []
-    r._key = String(r.reply_id || r.floor_id)
+    r._key = r._gameName ? overviewReplyKey(r._gameName, r.reply_id || r.floor_id) : String(r.reply_id || r.floor_id)
   }
   return { meta: raw, replies, templates }
 }
@@ -1259,8 +1268,8 @@ function filtered() {
   })
   const s = state.sort
   list.sort((a, b) => {
-    if (s === 'floor_desc') return (b.floor_id || 0) - (a.floor_id || 0)
-    if (s === 'floor_asc') return (a.floor_id || 0) - (b.floor_id || 0)
+    if (s === 'floor_desc') return (b.created_at || 0) - (a.created_at || 0) || (b.floor_id || 0) - (a.floor_id || 0)
+    if (s === 'floor_asc') return (a.created_at || 0) - (b.created_at || 0) || (a.floor_id || 0) - (b.floor_id || 0)
     if (s === 'like_desc') return b._like - a._like || (b.floor_id || 0) - (a.floor_id || 0)
     if (s === 'len_desc') return b._text.length - a._text.length
     return 0
@@ -1406,6 +1415,12 @@ function makeCard(r, flash) {
   const fl = document.createElement('span'); fl.className = 'floor'; fl.textContent = '#' + r.floor_id
   const tm = document.createElement('span'); tm.className = 'time'; tm.textContent = fmtTime(r.created_at)
   head.append(nick, fl, tm)
+  if (r._gameName) {
+    const source = document.createElement('span'); source.className = 'tag'
+    source.textContent = regionName(r._region, r._regionLabel)
+    source.title = r._gameName
+    head.append(source)
+  }
   const tg = document.createElement('span'); tg.className = 'tag ' + r._rating
   tg.textContent = r._rating === 'good' ? t('filter.good') : t('filter.bad')
   head.append(tg)
@@ -1479,7 +1494,7 @@ async function loadNotes() {
   const seq = ++noteLoadSeq
   const g = state.games[state.gameIdx]
   state.notes = []; state.noteKeys = new Set()
-  if (g) {
+  if (g && !state.groupOverview) {
     try {
       const response = await fetch('/api/notes?name=' + encodeURIComponent(g.name))
       const j = await response.json()
@@ -1493,6 +1508,11 @@ async function loadNotes() {
     if (seq !== noteLoadSeq) return
     if (!response.ok || !Array.isArray(j.notes)) throw new Error(lookupErrorText(j))
     state.allNotes = j.notes
+    if (state.groupOverview) {
+      const names = new Set(groupMembers().map(g => g.name))
+      state.notes = j.notes.filter(n => names.has(n._gameName))
+      state.noteKeys = new Set(state.notes.map(n => overviewReplyKey(n._gameName, n.replyId || n.floorId)))
+    }
   } catch (error) { if (seq !== noteLoadSeq) return; setStatus('err', t('error.noteSave') + ': ' + error.message) }
   $('noteBadge').textContent = state.allNotes.length
   renderNotes()
@@ -1554,7 +1574,8 @@ function noteCard(n) {
     // 便签可能属于别的关卡，先切过去
     const idx = state.games.findIndex(x => x.name === n._gameName)
     if (idx < 0) { setStatus('err', t('note.gameGone')); return }
-    if (idx !== state.gameIdx) {
+    if (idx !== state.gameIdx || state.groupOverview) {
+      state.groupOverview = null
       state.gameIdx = idx
       state.selectOpen.add(groupOf(state.games[idx]))
       syncGameSelectLabel(); renderGameSelectPanel(); updateGroupBtn()
@@ -1671,19 +1692,20 @@ function renderNotes() {
 }
 
 async function toggleNote(r, starEl) {
-  const g = state.games[state.gameIdx]
+  const g = r._gameName ? state.games.find(g => g.name === r._gameName) : state.games[state.gameIdx]
   if (!g || starEl.disabled) return
   const removing = state.noteKeys.has(r._key)
+  const replyKey = String(r.reply_id || r.floor_id)
   starEl.disabled = true
   try {
-    if (removing) await noteStore.remove(g.name, r._key)
-    else await noteStore.save(g.name, r._key, {
+    if (removing) await noteStore.remove(g.name, replyKey)
+    else await noteStore.save(g.name, replyKey, {
       replyId: r.reply_id, floorId: r.floor_id, nickname: (r.user_info || {}).nickname || '', uid: (r.user_info || {}).uid || '',
       content: r._text, createdAt: r.created_at, clientIp: r.client_ip || '', likeCount: r._like, text: '',
       game: g.levelName || g.name, gameName: g.name, region: g.region, regionLabel: g.regionLabel || g.region,
     })
     await loadNotes()
-    if ((state.games[state.gameIdx] || {}).name === g.name) {
+    if ((state.games[state.gameIdx] || {}).name === g.name || (state.groupOverview && groupMembers().some(m => m.name === g.name))) {
       starEl.textContent = t(removing ? 'note.star' : 'note.starred')
       starEl.classList.toggle('on', !removing)
       starEl.title = t(removing ? 'note.starTitle' : 'tip.starOn')
@@ -1710,15 +1732,17 @@ async function loadGames(keep) {
   if (!Array.isArray(j.games)) throw new Error(lookupErrorText(j))
   state.games = j.games || []
   state.groups = j.groups || []
+  if (state.groupOverview && !state.games.some(g => groupOf(g) === state.groupOverview)) state.groupOverview = null
   if (!state.games.length) {
     state.gameIdx = -1; state.data = null
     syncGameSelectLabel(); renderGameSelectPanel()
-    renderMgmt(); return
+    updateGroupBtn(); renderMgmt(); return
   }
   let idx = 0
   if (prev) { const f = state.games.findIndex(g => g.name === prev); if (f >= 0) idx = f }
   else if (state.gameIdx >= 0 && state.gameIdx < state.games.length) idx = state.gameIdx
   state.gameIdx = idx
+  if (state.groupOverview) state.gameIdx = state.games.findIndex(g => groupOf(g) === state.groupOverview)
   // 首次打开时只展开当前所在的分组，其余收起（不然列表太长）
   if (!state.selectOpen.size) state.selectOpen.add(groupOf(state.games[idx]))
   syncGameSelectLabel()
@@ -1729,6 +1753,7 @@ async function loadGames(keep) {
 
 // 当前选中项所在「组」的成员：同一款游戏在各国服的条目
 function groupMembers(idx) {
+  if (idx == null && state.groupOverview) return state.games.filter(g => groupOf(g) === state.groupOverview)
   const i = (idx == null) ? state.gameIdx : idx
   const g = state.games[i]
   if (!g) return []
@@ -1738,6 +1763,7 @@ function groupMembers(idx) {
 
 function selectEntryTab(idx) {
   if (idx < 0 || idx >= state.games.length) return
+  state.groupOverview = null
   state.gameIdx = idx
   state.selectOpen.add(groupOf(state.games[idx]))
   syncGameSelectLabel()
@@ -1751,10 +1777,21 @@ function gameLabelOf(g) {
   return `${g.levelName || g.name} · ${regionName(g.region, g.regionLabel)} (${t('unit.rows').replace('{n}', g.count)})`
 }
 
+function overviewReplyKey(name, id) { return JSON.stringify([name, String(id)]) }
+function overviewLabel(members) {
+  return t('group.overview') + ' · ' + t('unit.rows').replace('{n}', members.reduce((sum, g) => sum + (g.count || 0), 0))
+}
+function selectGroupOverview(key) {
+  const index = state.games.findIndex(g => groupOf(g) === key)
+  if (index < 0) return
+  state.groupOverview = key; state.gameIdx = index; state.selectOpen.add(key)
+  syncGameSelectLabel(); renderGameSelectPanel(); updateGroupBtn(); loadComments()
+}
+
 function syncGameSelectLabel() {
   const g = state.games[state.gameIdx]
   const el = $('gselLabel')
-  if (el) el.textContent = g ? gameLabelOf(g) : t('list.noGamesShort')
+  if (el) el.textContent = g ? (state.groupOverview ? state.groupOverview + ' · ' + overviewLabel(groupMembers()) : gameLabelOf(g)) : t('list.noGamesShort')
 }
 
 function renderGameSelectPanel() {
@@ -1790,7 +1827,7 @@ function renderGameSelectPanel() {
     const h = document.createElement('div')
     h.className = 'gsg' + (open ? ' open' : '') + (k === curGroup ? ' cur' : '')
     const arw = document.createElement('span'); arw.className = 'arw'; arw.textContent = open ? '▾' : '▸'
-    const nm = document.createElement('span'); nm.textContent = k
+    const nm = document.createElement('span'); nm.className = 'group-name'; nm.textContent = k
     const cnt = document.createElement('span'); cnt.className = 'cnt'; cnt.textContent = t('unit.servers').replace('{n}', members.length)
     h.append(arw, nm, cnt)
     h.onclick = (e) => {
@@ -1801,9 +1838,21 @@ function renderGameSelectPanel() {
     box.append(h)
     if (!open) continue
 
+    const overview = document.createElement('div')
+    overview.className = 'gsi group-overview' + (state.groupOverview === k ? ' on' : '')
+    const overviewName = document.createElement('span'); overviewName.className = 'overview-name'; overviewName.textContent = k + ' · ' + t('group.overview')
+    const overviewCount = document.createElement('span'); overviewCount.className = 'overview-count'
+    overviewCount.textContent = t('unit.rows').replace('{n}', members.reduce((sum, [g]) => sum + (g.count || 0), 0))
+    overview.append(overviewName, overviewCount)
+    overview.setAttribute('role', 'button'); overview.tabIndex = 0
+    overview.title = k + ' · ' + t('group.overviewHint')
+    overview.onclick = e => { e.stopPropagation(); closeGameSelect(); selectGroupOverview(k) }
+    overview.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); overview.onclick(e) } }
+    box.append(overview)
+
     for (const [g, i] of members) {
       const it = document.createElement('div')
-      it.className = 'gsi' + (i === state.gameIdx ? ' on' : '')
+      it.className = 'gsi' + (!state.groupOverview && i === state.gameIdx ? ' on' : '')
       it.textContent = gameLabelOf(g)
       it.onclick = (e) => { e.stopPropagation(); closeGameSelect(); selectEntryTab(i) }
       box.append(it)
@@ -1828,8 +1877,17 @@ $('gselBtn').onclick = (e) => {
 }
 document.addEventListener('click', () => closeGameSelect())
 function updateGroupBtn() {
+  const syncing = !!polling || syncStarting
+  $('btnSync').disabled = !state.games.length || syncing
+  $('btnFull').disabled = !state.games.length || syncing
+  $('btnSync').textContent = t(state.groupOverview ? 'btn.syncGroup' : 'btn.sync')
+  $('btnFull').textContent = t(state.groupOverview ? 'btn.groupFull' : 'btn.full')
+  $('btnSync').title = state.groupOverview ? t('group.overviewHint') : t('tip.sync')
+  $('btnFull').title = state.groupOverview ? t('group.overviewHint') : t('tip.full')
   const btn = $('btnSyncGroup')
   const bf = $('btnGroupFull')
+  if (btn) btn.hidden = !!state.groupOverview
+  if (bf) bf.hidden = !!state.groupOverview
   const gb = $('btnGroup')
   if (!btn) return
   const members = groupMembers()
@@ -1840,12 +1898,12 @@ function updateGroupBtn() {
     return
   }
   const base = members[0].group || members[0].baseName || members[0].name
-  btn.disabled = false
+  btn.disabled = syncing
   btn.textContent = members.length > 1 ? `${t('btn.syncGroup')} (${members.length})` : t('btn.syncGroup')
     btn.title = t('tip.groupSync').replace('{group}', base)
       .replace('{list}', members.map((m) => regionName(m.region, m.regionLabel)).join(t('unit.listSep')))
   if (bf) {
-    bf.disabled = false
+    bf.disabled = syncing
       bf.title = t('tip.groupFull').replace('{group}', base)
         .replace('{list}', members.map((m) => regionName(m.region, m.regionLabel)).join(t('unit.listSep')))
   }
@@ -1859,6 +1917,7 @@ function updateGroupBtn() {
 
 async function loadComments() {
   const seq = ++state.loadSeq
+  if (state.groupOverview) { await loadGroupComments(seq); return }
   const g = state.games[state.gameIdx]
   if (!g || !g.count) { state.data = null; renderAll(true); await loadNotes(); return }
   // 竞态保护：连点下拉时，先发的请求（评论多、慢）可能后回来，
@@ -1884,6 +1943,28 @@ async function loadComments() {
       }
       await new Promise((r2) => setTimeout(r2, 250 * (i + 1)))
     }
+  }
+}
+
+async function loadGroupComments(seq) {
+  const members = groupMembers()
+  state.data = null; renderAll(true)
+  try {
+    const sources = await Promise.all(members.filter(g => g.count).map(async g => {
+      const response = await fetch('/api/comments?name=' + encodeURIComponent(g.name))
+      if (!response.ok) throw new Error(g.name + ': HTTP ' + response.status)
+      const raw = await response.json()
+      if (!Array.isArray(raw.replies)) throw new Error(g.name)
+      return raw.replies.map(r => ({ ...r, _gameName: g.name, _region: g.region, _regionLabel: g.regionLabel }))
+    }))
+    if (seq !== state.loadSeq) return
+    // This is a virtual view: retain separate storage and IDs for every server.
+    state.data = buildData({ replies: sources.flat(), groupOverview: state.groupOverview })
+    await loadNotes()
+    if (seq === state.loadSeq) renderAll(true)
+  } catch (error) {
+    if (seq !== state.loadSeq) return
+    state.data = null; renderAll(true); setStatus('err', t('group.loadFail') + ': ' + error.message)
   }
 }
 
@@ -2143,6 +2224,7 @@ $('gpAll').onclick = async () => {
 
   const r = await postJson('/api/rename-group', { from: cur, to: nv })
   if (!r.ok) { msg.className = 'msg err'; msg.textContent = r.error || t('grp.renameFail'); return }
+  if (state.groupOverview === cur) { state.groupOverview = nv; state.selectOpen.add(nv) }
   $('dlgGroup').close()
   setStatus('ok', t('status.renamed').replace('{from}', cur).replace('{to}', nv).replace('{n}', r.changed)
     + (r.mergedIntoExisting ? t('grp.merged') : ''))
@@ -2202,6 +2284,7 @@ async function runSync(full, name, all, names) {
   if (polling || syncStarting) return false
   const g = state.games[state.gameIdx]
   const body = { full: !!full }
+  if (!all && !name && !names && state.groupOverview) names = groupMembers().map(g => g.name)
   if (all) {
     // 不传目标 → 服务端同步全部
   } else if (Array.isArray(names) && names.length) {
@@ -2307,7 +2390,10 @@ $('thr').onchange = e => {
   if (state.data) { state.data = buildData(state.data.meta); renderAll(true) }
 }
 $('btnSync').onclick = () => runSync(false)
-$('btnFull').onclick = () => { if (confirm(t('confirm.fullCrawl'))) runSync(true) }
+$('btnFull').onclick = () => {
+  if (state.groupOverview) { $('btnGroupFull').onclick(); return }
+  if (confirm(t('confirm.fullCrawl'))) runSync(true)
+}
 $('btnSyncGroup').onclick = () => {
   const members = groupMembers()
   if (!members.length) return
@@ -2340,18 +2426,20 @@ const q = s => '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"'
 
 $('csv').onclick = () => {
   const rows = filtered()
-    const head = [t('csv.floor'), t('csv.nick'), t('csv.uid'), t('csv.time'), t('csv.rating'),
+    const head = [t('csv.game'), t('csv.region'), t('csv.floor'), t('csv.nick'), t('csv.uid'), t('csv.time'), t('csv.rating'),
       t('csv.isTemplate'), t('csv.like'), t('csv.content'), t('csv.ip')]
   const lines = [head.map(q).join(',')]
   for (const r of rows) {
     lines.push([
+      r._gameName || (state.games[state.gameIdx] || {}).name || '',
+      regionName(r._region || (state.games[state.gameIdx] || {}).region),
       r.floor_id, (r.user_info && r.user_info.nickname) || '', (r.user_info && r.user_info.uid) || '',
         fmtTime(r.created_at), r._rating === 'good' ? t('csv.good') : t('csv.bad'),
         (r._tpl === 'df_good' || r._tpl === 'df_bad') ? t('csv.yes') : t('csv.no'),
         r._like, r._text, r.client_ip,
     ].map(q).join(','))
   }
-  download(((state.games[state.gameIdx] && state.games[state.gameIdx].name) || t('csv.comments')) + '-' + t('csv.comments') + '.csv', lines.join('\r\n'))
+  download((state.groupOverview || (state.games[state.gameIdx] && state.games[state.gameIdx].name) || t('csv.comments')) + '-' + t('csv.comments') + '.csv', lines.join('\r\n'))
 }
 $('noteMode').onchange = e => { state.noteMode = e.target.value; renderNotes() }
 
@@ -2649,7 +2737,7 @@ $('addOk').onclick = async () => {
     if (!j.ok) { msg.className = 'msg err'; msg.textContent = lookupErrorText(j); msg.title = j.error || ''; return }
     await loadGames(true)
     const index = state.games.findIndex(g => g.name === j.name)
-    if (index >= 0) { state.gameIdx = index; syncGameSelectLabel(); renderGameSelectPanel() }
+    if (index >= 0) { state.groupOverview = null; state.gameIdx = index; syncGameSelectLabel(); renderGameSelectPanel() }
     $('dlgAdd').close()
     await runSync(false, j.name)
   } catch (error) { msg.className = 'msg err'; msg.textContent = t('error.request') + ': ' + error.message; setStatus('err', msg.textContent) }

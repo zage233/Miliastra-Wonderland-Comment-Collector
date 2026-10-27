@@ -131,7 +131,7 @@
       const existing=state.games.find(g=>String(g.levelId)===String(info.levelId)&&g.region===info.region)
       const response=await fetch('/api/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({input:info.input,region:info.region,group:existing?existing.group:info.name})}),result=await response.json()
       if(!response.ok||!result.ok){message(lookupErrorText(result));return}
-      importedName=result.name;await loadGames(true);state.gameIdx=state.games.findIndex(g=>g.name===importedName)
+      importedName=result.name;await loadGames(true);state.groupOverview=null;state.gameIdx=state.games.findIndex(g=>g.name===importedName)
       syncGameSelectLabel();renderGameSelectPanel();updateGroupBtn();switchTab('list');resetFilters()
       dialog.close();coach.hidden=false;render()
       const synced=await runSync(false,importedName)

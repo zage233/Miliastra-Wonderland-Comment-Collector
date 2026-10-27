@@ -21,7 +21,19 @@ Keep the launcher together with the `app/`, `config/` and `data/` folders. This 
 
 The interface normally opens at `http://127.0.0.1:8788/`; another port is selected if necessary. Closing the tool page normally stops the background service after a short grace period. Enable the stay-running option in Management if you want it to remain running. Restart the service after backend updates.
 
-## First-run guide
+## All-region group overview
+
+Expand a project group in the top level selector and choose its first entry, **Group name · Review overview**, to combine the locally saved reviews of every registered entry in that group. Individual regions remain available below it. Missing or unregistered regions are not synced.
+
+The overview is indented beneath its group alongside the individual regions. It displays the overview label and review count using the same group-name-and-overview format as the collapsed selector; the collapsed selector retains the group name. Long labels wrap; Enter or Space opens the overview. Removing regions refreshes its membership and counts. Renaming or merging a selected group retains the new group's overview. If the group disappears, selection falls back to an available individual entry. Removing all entries clears the list and disables sync. Switching views while syncing does not re-enable sync buttons.
+
+See [testing notes](app/docs/TESTING.md) for regression coverage and commands.
+
+The main sync and full-refresh buttons target the entire selected group, and the overview stays selected after refresh. Partial sync failures are reported while successful entries update; failed entries retain their previous local data. If any member file cannot be loaded, the overview reports an error instead of presenting incomplete results as complete.
+
+Search, rating/template and date filters, statistics, sorting and CSV export apply to the combined list. Review cards show the source region. Time sorting uses review timestamps; the combined positive rate is calculated from local reviews. Matching IDs or text across regions remain separate reviews. Comment CSV files include game and region columns. Stars save notes to the original entry; locating a note opens that individual entry. This virtual view creates no extra data directory and preserves existing storage.
+
+## Hands-on first-run guide
 
 The first visit opens a six-step hands-on guide: choose a language, actually add and sync a level, try label filters, star a comment, write and verify a note, and review the main tabs. Enter your own level ID or share link. Lookup starts after a short typing pause and repeats when the region changes; the lookup button and Enter key remain available. Confirm the preview before adding. This registers the level and downloads real comments; saved comments and personal notes are also stored locally. Simplified Chinese starts with China servers; other languages start with global servers, with manual region selection available.
 

@@ -6756,6 +6756,26 @@
   ]
 ]
 
+  const groupOverviewText = {
+    'zh-cn': ['评论总览', '合并显示本组所有区服的本地评论；同步时更新本组全部区服。', '本组评论加载失败，请重试；未显示不完整的合并结果'],
+    'zh-tw': ['評論總覽', '合併顯示本組所有區服的本機評論；同步時更新本組全部區服。', '本組評論載入失敗，請重試；未顯示不完整的合併結果'],
+    'en-us': ['Review overview', 'View local reviews from every entry in this group. Sync updates all entries in the group.', 'Could not load all group reviews. Please retry; incomplete results are not shown'],
+    'ja-jp': ['コメント一覧', 'このグループの全サーバーのローカルコメントをまとめて表示します。同期はグループ全体が対象です。', 'グループのコメントを読み込めませんでした。再試行してください。不完全な結果は表示しません'],
+    'ko-kr': ['댓글 모아보기', '이 그룹의 모든 서버에 저장된 댓글을 함께 표시합니다. 동기화하면 그룹 전체를 업데이트합니다.', '그룹의 댓글을 모두 불러오지 못했습니다. 다시 시도하세요. 불완전한 결과는 표시하지 않습니다'],
+    'es-es': ['Resumen de comentarios', 'Muestra los comentarios locales de todas las entradas del grupo. La sincronización actualiza todo el grupo.', 'No se pudieron cargar todos los comentarios del grupo. Reinténtalo; no se muestran resultados incompletos'],
+    'fr-fr': ['Vue des commentaires', 'Affiche les commentaires locaux de toutes les entrées du groupe. La synchronisation met à jour tout le groupe.', 'Impossible de charger tous les commentaires du groupe. Réessayez ; les résultats incomplets ne sont pas affichés'],
+    'ru-ru': ['Обзор отзывов', 'Показывает локальные отзывы всех записей группы. Синхронизация обновляет всю группу.', 'Не удалось загрузить все отзывы группы. Повторите попытку; неполные результаты не отображаются'],
+    'th-th': ['ภาพรวมความคิดเห็น', 'แสดงความคิดเห็นที่บันทึกไว้จากทุกรายการในกลุ่ม การซิงค์จะอัปเดตทั้งกลุ่ม', 'โหลดความคิดเห็นของกลุ่มได้ไม่ครบ โปรดลองอีกครั้ง ระบบจะไม่แสดงผลลัพธ์ที่ไม่ครบถ้วน'],
+    'vi-vn': ['Tổng quan bình luận', 'Hiển thị bình luận đã lưu của mọi mục trong nhóm. Đồng bộ sẽ cập nhật cả nhóm.', 'Không thể tải toàn bộ bình luận của nhóm. Hãy thử lại; kết quả chưa đầy đủ sẽ không được hiển thị'],
+    'de-de': ['Kommentarübersicht', 'Zeigt lokale Kommentare aller Einträge dieser Gruppe. Die Synchronisierung aktualisiert die gesamte Gruppe.', 'Nicht alle Gruppenkommentare konnten geladen werden. Bitte erneut versuchen; unvollständige Ergebnisse werden nicht angezeigt'],
+    'id-id': ['Ringkasan komentar', 'Menampilkan komentar lokal dari semua entri grup. Sinkronisasi memperbarui seluruh grup.', 'Tidak dapat memuat semua komentar grup. Coba lagi; hasil yang tidak lengkap tidak ditampilkan'],
+    'pt-pt': ['Resumo dos comentários', 'Mostra os comentários locais de todas as entradas do grupo. A sincronização atualiza todo o grupo.', 'Não foi possível carregar todos os comentários do grupo. Tenta novamente; os resultados incompletos não são apresentados'],
+    'tr-tr': ['Yorum özeti', 'Gruptaki tüm kayıtların yerel yorumlarını gösterir. Eşitleme tüm grubu günceller.', 'Grubun tüm yorumları yüklenemedi. Tekrar deneyin; eksik sonuçlar gösterilmez'],
+    'it-it': ['Riepilogo commenti', 'Mostra i commenti locali di tutte le voci del gruppo. La sincronizzazione aggiorna tutto il gruppo.', 'Impossibile caricare tutti i commenti del gruppo. Riprova; i risultati incompleti non vengono mostrati'],
+  }
+  for (const [lang, text] of Object.entries(groupOverviewText)) {
+    Object.assign(QX_I18N[lang], { 'group.overview': text[0], 'group.overviewHint': text[1], 'group.loadFail': text[2] })
+  }
   window.QX_LANGS = QX_LANGS
   window.QX_I18N = QX_I18N
   window.QX_TARGETS = QX_TARGETS
