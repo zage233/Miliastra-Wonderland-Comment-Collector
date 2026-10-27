@@ -48,6 +48,27 @@ test('真实本地服务：导入、同步、便签、分组、异常输入及�
     assert.equal((await call('/api/notes',{name:b.name,note:{replyId:'reply-3',text:'Late request'}})).data.ok,false)
     assert.equal((await call('/api/notes-all')).data.notes.length,1)
   })
+  await t.test('跨站/伪装 Host/非 JSON 写请求被拦截，删除与便签接口不改变原文件，同源及信标可用',async()=>{
+    const rawStatus=headers=>new Promise((resolve,reject)=>{require('node:http').get(base+'/api/life',{headers},res=>{res.resume();resolve(res.statusCode)}).on('error',reject)})
+    const indexFile=path.join(dir,'config','games.json'),beforeIndex=fs.readFileSync(indexFile,'utf8')
+    const beforeNotes=(await call('/api/notes-all')).data.notes
+    for(const [url,body]of [['/api/remove',{name:a.name,deleteData:true}],['/api/remove-group',{group:'Shared',deleteData:true}],['/api/notes/remove',{name:a.name,key:'reply-3'}],['/api/autoclose',{on:true}]]){
+      for(const origin of ['https://untrusted.example','null',base+'9']){
+        const r=await fetch(base+url,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify(body)})
+        assert.equal(r.status,403,url+' '+origin)
+      }
+      const plain=await fetch(base+url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)})
+      assert.equal(plain.status,415,url)
+    }
+    assert.equal(await rawStatus({Host:'untrusted.example'}),403)
+    assert.equal(await rawStatus({'Sec-Fetch-Site':'cross-site'}),403)
+    assert.equal(fs.readFileSync(indexFile,'utf8'),beforeIndex)
+    assert.deepEqual((await call('/api/notes-all')).data.notes,beforeNotes)
+    const settings=await fetch(base+'/api/autoclose',{method:'POST',headers:{Origin:base,'Content-Type':'application/json; charset=UTF-8'},body:'{"on":false}'})
+    assert.equal(settings.status,200)
+    for(const url of ['/api/ping','/api/bye'])assert.equal((await fetch(base+url,{method:'POST',headers:{Origin:base,'Content-Type':'text/plain;charset=UTF-8'},body:''})).status,200)
+    assert.equal(await rawStatus({Host:'localhost:'+port,Origin:'http://localhost:'+port}),200)
+  })
   await t.test('全量更新刷新内容和点赞、清理删除项，同时保留便签快照',async()=>{
     fs.writeFileSync(path.join(dir,'phase.json'),'{"phase":2}')
     const p=await sync({name:a.name,full:true});assert.equal(p.results[0].count,5)

@@ -28,13 +28,13 @@ test('单服查询、名字搜索和添加均返回分类错误；未确认的�
     for (const [method,url] of [['GET','/api/level-detail?input=123456789&region=os_asia'],
       ['GET','/api/search-level?name=Example'],['POST','/api/add']]) {
       let response
-      await handler({ method, url }, { writeHead() {}, end: body => { response = JSON.parse(body.toString()) } })
+      await handler({ method, url, headers:{host:'127.0.0.1:8788','content-type':'application/json'}, socket:{localPort:8788} }, { writeHead() {}, end: body => { response = JSON.parse(body.toString()) } })
       assert.equal(response.ok, false, url)
       assert.equal(response.code, code, url)
     }
     assert.equal(writes, 0)
     let invalid
-    await handler({ method: 'GET', url: '/api/level-detail?input=abc' },
+    await handler({ method: 'GET', url: '/api/level-detail?input=abc', headers:{host:'127.0.0.1:8788'}, socket:{localPort:8788} },
       { writeHead() {}, end: body => { invalid = JSON.parse(body.toString()) } })
     assert.equal(invalid.code, 'invalid')
   }

@@ -10,6 +10,14 @@ These endpoints belong to the local service in [server.js](../server.js). They a
 
 Request bodies are JSON objects. Responses are JSON except for the interface, JavaScript and icon resources. An HTTP 200 response can still contain `ok: false`; check the response body. Storage errors return HTTP 500 and `errorKey: "error.storage"` without clearing the damaged file.
 
+## Request security
+
+Requests must use `127.0.0.1` or `localhost` with the actual listening port in Host. If Origin is present, it must exactly match that HTTP origin; null, foreign and different-port origins are rejected. Fetch Metadata values other than `same-origin` or `none` are rejected. Rejections return HTTP 403 before reaching the API handler. Browser preflight requests do not grant cross-origin access.
+
+POST/PUT/PATCH/DELETE requests require `Content-Type: application/json` (optional charset accepted), otherwise HTTP 415. `/api/ping` and `/api/bye` are exempt from that content-type rule to support page-close beacons, but all host/origin/Fetch Metadata checks still apply. CLI clients may omit Origin and Fetch Metadata, and must send JSON for normal write APIs. There is no authentication boundary against other local processes.
+
+CSV escaping is performed in the interface for both comment and note exports. Cells beginning with formula markers (including markers after whitespace/control characters), or leading tab/line-break characters, receive an apostrophe before CSV quoting. Stored content is not modified.
+
 ## Endpoints
 
 | Method and path | Input | Result |

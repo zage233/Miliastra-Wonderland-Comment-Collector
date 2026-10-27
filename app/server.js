@@ -122,6 +122,30 @@ function json(res, code, obj) {
   res.end(body)
 }
 
+// Reject browser requests from other origins and Host-based DNS rebinding.
+// CLI clients may omit Origin, but state-changing APIs still require JSON.
+function requestRejection(req) {
+  const host = String(req.headers.host || '').toLowerCase()
+  const match = host.match(/^(127\.0\.0\.1|localhost)(?::([0-9]{1,5}))?$/)
+  if (!match || Number(match[2] || 80) !== req.socket.localPort) {
+    return { status: 403, error: 'Untrusted local service host' }
+  }
+  const origin = req.headers.origin
+  if (origin !== undefined && origin !== new URL('http://' + host).origin) {
+    return { status: 403, error: 'Request origin is not allowed' }
+  }
+  const site = req.headers['sec-fetch-site']
+  if (site && site !== 'same-origin' && site !== 'none') {
+    return { status: 403, error: 'Cross-site requests are not allowed' }
+  }
+  const heartbeat = req.url === '/api/ping' || req.url === '/api/bye'
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && !heartbeat) {
+    const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase()
+    if (type !== 'application/json') return { status: 415, error: 'JSON content type is required' }
+  }
+  return null
+}
+
 function readBody(req) {
   return new Promise((resolve) => {
     const chunks = []
@@ -144,6 +168,8 @@ function readBody(req) {
 
 const server = http.createServer(async (req, res) => {
   try {
+  const rejected = requestRejection(req)
+  if (rejected) return json(res, rejected.status, { ok: false, error: rejected.error })
   const u = new URL(req.url, 'http://127.0.0.1')
   const p = u.pathname
   if (process.env.QX_TRACE) console.log('[trace]', ((Date.now() / 1000) % 1000).toFixed(1), req.method, p)

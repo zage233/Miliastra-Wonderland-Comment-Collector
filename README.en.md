@@ -2,6 +2,10 @@
 
 [简体中文](README.md) | English
 
+## Local service and export protections
+
+The local service validates the loopback Host, actual port, browser Origin and cross-site request metadata. State-changing APIs require JSON, with compatible handling for same-origin page-close beacons. Use the local address printed by the launcher. Comment and note CSV exports prefix potentially formula-like cells with an apostrophe; spreadsheet software may display that prefix. Stored comments and notes remain unchanged. These checks do not replace operating-system permissions for local processes.
+
 ## Publishing to GitHub
 
 The official name is **Miliastra Wonderland**. The launcher is `Miliastra Wonderland Comment Collector.exe`.

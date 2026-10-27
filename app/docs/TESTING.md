@@ -6,7 +6,7 @@ Run from the project root with Node.js 18 or newer:
 node --test app/tests/*.test.cjs
 ```
 
-The 2026-10-27 regression contains 93 passing tests, including subtests. Tests use isolated temporary data; do not point fixtures at a working installation's data directory.
+The 2026-10-27 regression contains 98 passing tests, including subtests. Tests use isolated temporary data; do not point fixtures at a working installation's data directory.
 
 ## Group overview combinations
 
@@ -28,6 +28,12 @@ The 2026-10-27 regression contains 93 passing tests, including subtests. Tests u
 
 Browser verification uses a separate mock-service copy to check the group selector, aggregation, sync, stars, exports and responsive layout. No production comments or notes are changed by this workflow.
 
-## Release files
+## Security regression
+
+`security.test.cjs` checks trusted loopback hosts and actual ports, foreign/null origins, cross-site Fetch Metadata, JSON-only writes and compatible same-origin beacons. It also tests formula-safe CSV cells, leading whitespace/control characters, fullwidth markers, normal multiline text and shared encoding in both exports.
+
+The real-service integration test verifies that foreign-origin deletion, group deletion, note removal and settings requests are blocked without changing the registration or note files. It covers plain-text writes, an untrusted Host sent through a raw HTTP client, legitimate same-origin JSON requests, localhost and heartbeat/close beacons. Existing automatic-exit and API error classification tests use realistic trusted request headers.
+
+## Publication checks
 
 `release-files.test.cjs` compiles every JavaScript source and HTML inline script without running it, checks local script/icon assets and Markdown links, scans source/docs for known personal absolute paths and private-key headers, verifies the MIT license file and English launcher references, and verifies that all 15 overview labels use a short title. The same complete regression is run from a clean generated release directory. This is a targeted publication check, not a guarantee that arbitrary future uploads contain no sensitive data.

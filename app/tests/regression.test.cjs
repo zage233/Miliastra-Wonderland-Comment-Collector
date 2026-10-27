@@ -454,7 +454,7 @@ test('隐藏启动保留关页自动退出，刷新后新心跳会阻止退出',
     vm.createContext(ctx)
     vm.runInContext(fs.readFileSync(path.join(root,'server.js'),'utf8'),ctx)
     assert.equal(openedHidden,true)
-    const request=async url=>handler({method:'POST',url},{writeHead(){},end(){}})
+    const request=async url=>handler({method:'POST',url,headers:{host:'127.0.0.1:8788'},socket:{localPort:8788}},{writeHead(){},end(){}})
     await request('/api/ping')
     await request('/api/bye')
     if(refreshed){now+=1000;await request('/api/ping')}

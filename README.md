@@ -25,6 +25,8 @@
 
 ## 启动程序
 
+本地服务会校验回环 Host、实际端口、浏览器 Origin 和跨站请求元数据，修改数据的接口要求 JSON；关页信标保留兼容处理。请使用启动器给出的本地地址访问。评论和便签 CSV 会为可能被表格软件当作公式的内容添加前置单引号，导出结果可能显示该安全前缀，原评论和备注不会改变。这些保护不替代操作系统的本地进程权限控制。
+
 在 Windows 下双击 **Miliastra Wonderland Comment Collector.exe**。它会隐藏控制台并打开默认浏览器，无需管理员权限。保留同目录的 `app/`、`config/`、`data/` 文件夹；EXE 是启动器，不是单文件安装包。
 
 需要支持内置 fetch 的 Node.js（18 或更新版本）以及可用的 Windows curl。可以安装 Node.js 并加入 PATH，也可以将 `node.exe` 放在工具根目录或 `runtime/node.exe`。
