@@ -232,7 +232,7 @@ test('超时预算会取消底层 fetch，随后没有新请求', async () => {
 
 test('全量重抓删除旧评论并刷新字段', async () => {
   let payload
-  const fixtureFs = { existsSync: () => true,
+  const fixtureFs = { existsSync: p => !String(p).endsWith('notes.json'),
     readFileSync: () => JSON.stringify({replies:[{reply_id:'deleted',floor_id:1,sub_replies:[]},{reply_id:'keep',floor_id:2,content:'old',sub_replies:[]}]}),
     mkdirSync() {}, renameSync() {}, unlinkSync() {}, writeFileSync: (p,s) => {payload=JSON.parse(s)} }
   const c = context({require:n=>n==='node:fs'?fixtureFs:require(n)})
@@ -244,7 +244,7 @@ test('全量重抓删除旧评论并刷新字段', async () => {
 })
 
 test('增量 HOT 补抓的页数包含在结构化日志中', async () => {
-  const fixtureFs = {existsSync:()=>true,readFileSync:()=>JSON.stringify({replies:[{reply_id:'one',floor_id:1,sub_replies:[]}]}),mkdirSync(){},renameSync(){},unlinkSync(){},writeFileSync(){}}
+  const fixtureFs = {existsSync:p=>!String(p).endsWith('notes.json'),readFileSync:()=>JSON.stringify({replies:[{reply_id:'one',floor_id:1,sub_replies:[]}]}),mkdirSync(){},renameSync(){},unlinkSync(){},writeFileSync(){}}
   const c=context({require:n=>n==='node:fs'?fixtureFs:require(n)})
   const items=await run(c, `(async()=>{
     let log;setLogSink(line=>{if(line.k==='log.streams')log=line});

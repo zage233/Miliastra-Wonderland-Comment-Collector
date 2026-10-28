@@ -97,6 +97,8 @@ New-comment/reply totals appear inside the filter toolbar. New parent comments, 
 
 ## Saved notes and management
 
+Notes include locally collected replies in a collapsible thread with nesting and addressees. Normal sync and individual thread refresh update the saved reply snapshot while preserving personal text and the original parent-comment snapshot. Legacy notes join to their own entry's local comments without being saved again. Missing source comments retain the last saved thread. Comment-list update filters do not hide note replies; notes CSV includes local reply counts and text. Incomplete remote collection is still reported.
+
 Notes span all registered levels. Edits save after about 0.6 seconds or when the field loses focus. Drafts survive rerendering within the current page; save failures are reported. Wait for saving to finish before closing or refreshing. Note writes and removals are serialized, and CSV export waits for pending saves. Comment and saved timestamps use the device’s local timezone. Add personal text, group notes by game and/or region, or jump back to the source comment. A saved comment snapshot remains available even if the source comment disappears. Notes CSV includes the game, region and comment information alongside your own note.
 
 Management lets you rename, merge or split groups, inspect storage, and control service lifetime. **Removing a registration keeps its stored data. Deleting an entry or group also deletes its local comments and notes.** Read the confirmation carefully and back up first. Removing or deleting registrations is blocked while synchronization is running. Storage names are disambiguated even when Windows normalization would otherwise collide; retained data is reused only for a matching region and ID. JSON files are saved through temporary-file replacement, and corrupt files are reported rather than silently treated as empty.
@@ -118,6 +120,8 @@ The address above is a loopback example, not a supplied proxy. HTTP and SOCKS5 p
 To inspect local proxy detection, run `node app/collect.js proxy`. Diagnostic output may contain your proxy details; review it before sharing.
 
 ## Files and optional commands
+
+For an upgrade, close the old collector and background service, extract a clean delivery to a separate, non-nested folder, then run `node app/launcher/migrate-data.cjs "previous installation folder"` from the new root. It verifies the new package, checks old data compatibility, copies configuration and collections byte for byte, and leaves the previous installation unchanged. Existing data in the new folder or incompatible/corrupt old formats stop the transfer. Never overwrite personal `config/` or `data/` with the empty release defaults. See the [upgrade guide](app/docs/UPDATING.md). Browser preferences are separate.
 
 The program consists of the EXE and complete `app/` folder; working configuration and collections live in `config/` and `data/`. Publication also includes license, release notes and verification files; see the [delivery inventory](app/docs/RELEASE-CHECK.md). Compatibility launch scripts are inside `app/`.
 

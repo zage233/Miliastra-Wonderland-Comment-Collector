@@ -1500,9 +1500,9 @@ function unreadSubView(items, ids = new Set(), pin, only) {
   const out=[],visit=nodes=>{for(const n of nodes){if(only&&!n.hasUnread)continue;out.push({row:n.row,depth:n.depth});visit(n.children)}}
   visit(roots);return out
 }
-function renderSubReplies(box, rows, newIds = new Set()) {
+function renderSubReplies(box, rows, newIds = new Set(), { pin = state.pinUnread, only = state.onlyUnread } = {}) {
   box.textContent = ''
-  for (const { row, depth } of unreadSubView(visibleSubReplies(rows),newIds,state.pinUnread,state.onlyUnread)) {
+  for (const { row, depth } of unreadSubView(visibleSubReplies(rows),newIds,pin,only)) {
     const line = document.createElement('div')
     line.className = 'sub-line' + (newIds.has(String(row.reply_id || row.floor_id)) ? ' sub-new' : '')
     line.style.setProperty('--sub-depth',depth)
@@ -1594,6 +1594,7 @@ function makeCard(r, flash) {
         summary.textContent = threadLabel()
         renderSubReplies(subs, result.replies, r._newSubIds)
         renderStats()
+        await loadNotes()
         status.textContent = t(result.complete ? 'sub.loaded' : 'sub.partial').replace('{n}', visibleSubReplies(result.replies).length)
       } catch (error) { status.textContent = t('error.request') + ': ' + error.message }
       finally { load.disabled = false }
@@ -1702,8 +1703,24 @@ function noteCard(n) {
     d.append(src)
   }
 
-  const body = document.createElement('div'); body.className = 'content'; body.textContent = n.content || t('note.noContent')
+  const body = document.createElement('div'); body.className = 'content'; body.setAttribute('translate','yes'); body.textContent = n.content || t('note.noContent')
   d.append(body)
+
+  const replyRows = Array.isArray(n.subReplies) ? n.subReplies : []
+  const replyCount = Math.max(visibleSubReplies(replyRows).length, Number(n.subReplyCount) || 0)
+  if (replyCount || n.subReplyFetch?.complete === false) {
+    const thread = document.createElement('details'); thread.className = 'sub-thread'
+    const summary = document.createElement('summary'); summary.textContent = t('sub.count').replace('{n}', replyCount)
+    const replies = document.createElement('div'); replies.className = 'subs'
+    // Comment-list filters must never hide replies in a saved note.
+    renderSubReplies(replies, replyRows, new Set(), { pin: false, only: false })
+    thread.append(summary, replies)
+    if (n.subReplyFetch?.complete === false || visibleSubReplies(replyRows).length < replyCount) {
+      const status = document.createElement('div'); status.className = 'muted'
+      status.textContent = t('sub.partial').replace('{n}', visibleSubReplies(replyRows).length); thread.append(status)
+    }
+    d.append(thread)
+  }
 
   const ta = document.createElement('textarea')
   ta.className = 'mytext'
@@ -2654,11 +2671,13 @@ $('noteMode').onchange = e => { state.noteMode = e.target.value; renderNotes() }
     // 便签是跨游戏的，所以一定要带「游戏 / 区服」两列，否则导出后分不清来源。
     // 文件名也不该再用当前关卡名（会让人以为只导了这一个）。
     const head = [t('csv.game'), t('csv.region'), t('csv.floor'), t('csv.nick'), t('csv.uid'),
-      t('csv.noteCreated'), t('csv.noteSaved'), t('csv.noteText'), t('csv.noteContent'), t('csv.ip')]
+      t('csv.noteCreated'), t('csv.noteSaved'), t('csv.noteText'), t('csv.noteContent'), t('csv.ip'), t('sub.count').replace('{n}', '').replace(/[：:]\s*$/, ''), t('sub.export')]
     const lines = [head.map(q).join(',')]
     for (const n of all) {
       lines.push([noteGameName(n), noteRegionName(n), n.floorId, n.nickname, n.uid, fmtTime(n.createdAt),
-                  fmtTime(n.savedAt, true), n.text, n.content, n.clientIp].map(q).join(','))
+                  fmtTime(n.savedAt, true), n.text, n.content, n.clientIp,
+                  Math.max(visibleSubReplies(n.subReplies || []).length, Number(n.subReplyCount) || 0),
+                  visibleSubReplies(n.subReplies || []).map(({ row, depth }) => '  '.repeat(depth) + ((row.user_info || {}).nickname || '') + (row.r_user?.nickname ? ' → ' + row.r_user.nickname : '') + ': ' + (row.content || '')).join('\n')].map(q).join(','))
     }
     const d = new Date()
     const stamp = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0')

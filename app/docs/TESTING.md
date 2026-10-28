@@ -1,5 +1,11 @@
 # Regression testing
 
+## Notes and upgrade data transfer
+
+`note-replies.test.cjs` verifies nested reply snapshots, legacy note enrichment, cross-region identity isolation, text preservation, missing/deleted parents, reused floor numbers, complete empty threads, persistence after individual refresh, collapsed rendering, comment-filter independence and reply CSV export. The real API suite additionally verifies that full sync persists newly added replies in existing notes.
+
+`migrate-data.test.cjs` verifies byte-identical configuration/data transfer into a clean delivery, previous-folder preservation, unchanged program files, repeat-transfer rejection, corrupted code, incompatible formats, active-process rejection, overlapping folders, concurrent-write detection and replacement rollback. A real Windows CLI test starts an isolated background process, verifies blocking, stops only that fixture, then verifies successful transfer. Production user data is never migrated by tests.
+
 Run from the project root with Node.js 18 or newer:
 
 ```sh

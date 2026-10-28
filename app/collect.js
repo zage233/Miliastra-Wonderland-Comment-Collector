@@ -1227,7 +1227,10 @@ async function syncGame(cookie, entry, opts = {}) {
     levelInfo,
     replies, unread, subReplyFailed,
   }
+  // Upgrade legacy note snapshots before a full refresh can remove their source.
+  persistNoteReplies(entry.name)
   writeJsonAtomic(file, payload)
+  persistNoteReplies(entry.name)
 
   const added = newComments.length
   emit(L('log.count', { total, local: replies.length },
@@ -1253,8 +1256,36 @@ function loadNotes(name) {
   try {
     const j = JSON.parse(fs.readFileSync(f, 'utf8').replace(/^\uFEFF/, ''))
     if (!Array.isArray(j.notes)) throw new Error('notes must be an array')
-    return j
+    return attachNoteReplies(name, j)
   } catch (error) { throw new Error('notes.json 解析失败：' + error.message) }
+}
+
+// Only join within this entry and by stable reply ID. Deleted comments keep their
+// last saved thread; a reused floor number must never attach another author's thread.
+function attachNoteReplies(name, data) {
+  let comments
+  try { comments = JSON.parse(fs.readFileSync(gameFile(name), 'utf8').replace(/^\uFEFF/, '')) } catch { return data }
+  if (!Array.isArray(comments.replies)) return data
+  const byId = new Map(comments.replies.filter(r => r.reply_id != null).map(r => [String(r.reply_id), r]))
+  const byFloor = new Map(comments.replies.map(r => [String(r.floor_id), r]))
+  for (const note of data.notes) {
+    const parent = note.replyId != null ? byId.get(String(note.replyId)) : byFloor.get(String(note.floorId))
+    if (!parent) continue
+    // No field in legacy source data is different from a successfully fetched empty thread.
+    if (!Array.isArray(parent.sub_replies)) continue
+    note.subReplies = parent.sub_replies
+    const loaded = flattenSubReplies(parent.sub_replies).length
+    note.subReplyCount = parent.subReplyFetch?.complete ? loaded : Math.max(loaded, Number(parent.reply_stat?.reply_count) || 0)
+    note.subReplyFetch = parent.subReplyFetch || null
+  }
+  return data
+}
+
+function persistNoteReplies(name) {
+  if (!fs.existsSync(notesFile(name))) return
+  const before = fs.readFileSync(notesFile(name), 'utf8').replace(/^\uFEFF/, '')
+  const data = loadNotes(name)
+  if (JSON.stringify(JSON.parse(before)) !== JSON.stringify(data)) saveNotes(name, data)
 }
 
 function saveNotes(name, data) {
@@ -1308,7 +1339,7 @@ function addNote(name, note) {
       text: note.text || '',
     })
   }
-  saveNotes(name, data)
+  saveNotes(name, attachNoteReplies(name, data))
   return { ok: true, count: data.notes.length }
 }
 
@@ -1757,6 +1788,7 @@ async function fetchSubRepliesOnce(name, replyId) {
   latest.unread.subReplies = [...new Set([...(latest.unread.subReplies || []), ...fresh])]
   if (fresh.length) latest.unread.parents = [...new Set([...(latest.unread.parents || []), replyId])]
   writeJsonAtomic(file, latest)
+  persistNoteReplies(name)
   return { ok: true, replies: parent.sub_replies, complete, newIds: fresh }
 }
 async function downloadSubReplies(entry, replyId, cookie) {

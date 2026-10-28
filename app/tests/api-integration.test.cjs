@@ -79,6 +79,15 @@ test('真实本地服务：导入、同步、便签、分组、异常输入及�
     assert.equal((await call('/api/notes',{name:b.name,note:{replyId:'reply-3',text:'Late request'}})).data.ok,false)
     assert.equal((await call('/api/notes-all')).data.notes.length,1)
   })
+  await t.test('已有便签随完整同步持久补齐子回复，保留原文与备注',async()=>{
+    fs.writeFileSync(path.join(dir,'phase.json'),'{"phase":3}')
+    await sync({name:a.name})
+    const note=(await call('/api/notes?name='+encodeURIComponent(a.name))).data.notes[0]
+    assert.equal(note.subReplies.length,4);assert.equal(note.content,'Snapshot');assert.equal(note.text,'Latest, "quoted"\nline 😀')
+    const files=fs.readdirSync(path.join(dir,'data')).map(name=>path.join(dir,'data',name,'notes.json')).filter(file=>fs.existsSync(file))
+    assert.ok(files.some(file=>JSON.parse(fs.readFileSync(file,'utf8')).notes.some(n=>n.subReplies?.length===4)))
+    fs.writeFileSync(path.join(dir,'phase.json'),'{"phase":1}')
+  })
   await t.test('跨站/伪装 Host/非 JSON 写请求被拦截，删除与便签接口不改变原文件，同源及信标可用',async()=>{
     const rawStatus=headers=>new Promise((resolve,reject)=>{require('node:http').get(base+'/api/life',{headers},res=>{res.resume();resolve(res.statusCode)}).on('error',reject)})
     const indexFile=path.join(dir,'config','games.json'),beforeIndex=fs.readFileSync(indexFile,'utf8')

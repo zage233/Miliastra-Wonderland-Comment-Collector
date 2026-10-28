@@ -77,6 +77,10 @@ Comment, index and note JSON files are written to temporary files and then renam
 
 The browser's [note store](../note-store.js) serializes operations per entry and note ID, retains drafts across rerenders, cancels pending saves on removal, and flushes drafts before note export. It does not replace backups. Wait for saving to finish before closing the page.
 
+Notes optionally contain `subReplies`, `subReplyCount` and `subReplyFetch`. Reads join legacy notes to their entry's current local comments using stable reply IDs (floor fallback only when the note has no reply ID). Normal sync, individual thread refresh and note saves persist the reply snapshot. Missing source comments retain the saved snapshot; main-comment content and personal text are unchanged. No extra network request is made when opening notes. An unknown or corrupt comments file falls back to the saved note thread. Reply completeness retains the collector's limitations. The note view and CSV include all locally stored replies independently of the comment-list filters.
+
+The [data transfer tool](../launcher/migrate-data.cjs) validates a clean new installation and copies legacy/v1 configuration and storage without rewriting the old installation. It does not convert arbitrary future formats. See [UPDATING.md](UPDATING.md) for compatibility and rollback guidance.
+
 ## Remote collection and verification
 
 The collector selects Miyoushe or HoYoLAB through the region and uses level-detail, reply-list and post-search endpoints. The reply-list API is paginated by comment number; full collection combines descending order with popular-order results. Availability, counts and nested-reply previews depend on the remote service. No fixed runtime or complete coverage is guaranteed.
