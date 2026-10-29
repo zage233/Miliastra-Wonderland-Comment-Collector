@@ -10,7 +10,8 @@ global.fetch=async(raw,options={})=>{
     if(id==='888888888')result={retcode:-2000431,message:'No such level'}
     else{
       const name=id==='222222222'?'Audit Beta':id==='444444444'?'Audit / Collision':id==='555555555'?'Audit : Collision':'Audit Alpha'
-      result={retcode:0,data:{level_info:{level_name:name,good_rate:'75%',play_type:'Adventure',cover_img:{url:'/app.ico'}}}}
+      const language=url.searchParams.get('lang')||'zh-cn'
+      result={retcode:0,data:{level_info:{level_name:language==='en-us'?'Localized '+name:language==='ja-jp'?'日本語 '+name:name,good_rate:'75%',play_type:'Adventure',cover_img:{url:'/app.ico'}}}}
     }
   }else if(url.pathname.endsWith('/level/reply/sub_replies')){
     const body=JSON.parse(options.body)

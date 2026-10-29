@@ -84,6 +84,12 @@ const SERVERS = {
 }
 
 const OS_REGIONS = ['os_asia', 'os_euro', 'os_usa', 'os_cht']
+const TITLE_LANGUAGES = ['zh-cn','zh-tw','en-us','ja-jp','ko-kr','es-es','fr-fr','ru-ru','th-th','vi-vn','de-de','id-id','pt-pt','tr-tr','it-it']
+function titleLanguage(value) {
+  const language = String(value || 'zh-cn').toLowerCase().replace(/_/g, '-')
+  if (!TITLE_LANGUAGES.includes(language)) throw Object.assign(new Error('Unsupported title language'), { invalidLanguage: true })
+  return language
+}
 
 // 区域前缀决定走哪个服
 function serverOf(region) {
@@ -119,16 +125,17 @@ function baseNameOf(name) {
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
-function headersFor(region) {
+function headersFor(region, language) {
   const p = profileOf(region)
+  const lang = titleLanguage(language)
   return {
     accept: 'application/json, text/plain, */*',
     'content-type': 'application/json;charset=UTF-8',
-    'accept-language': 'zh-CN,zh;q=0.9',
+    'accept-language': lang,
     origin: p.origin,
     referer: p.referer,
     'x-rpc-client_type': '4',
-    'x-rpc-language': p.lang,
+    'x-rpc-language': lang,
     'x-rpc-device_id': '00000000-0000-0000-0000-000000000000',
     ...p.extra,
     'user-agent': USER_AGENT,
@@ -595,6 +602,7 @@ function worthOtherRoute(e) {
 // Keep network failures distinct from official business replies in the UI.
 function lookupFailure(error) {
   const e = error || {}
+  if (e.invalidLanguage) return { code:'invalid', error:String(e.message) }
   const code = e.businessError ? 'business' : e.retcode !== undefined && !e.routeBad
     ? (Number(e.retcode) === -2000431 ? 'notFound' : 'business')
     : e.noProxy ? 'proxyMissing' : e.proxyAttempted ? 'proxyFailed' : 'network'
@@ -791,17 +799,83 @@ function loadOptionalCookie() {
   return fs.readFileSync(p, 'utf8').trim()
 }
 
+function cleanLevelTitles(value) {
+  return Object.fromEntries(TITLE_LANGUAGES.filter(lang => typeof value?.[lang] === 'string' && value[lang].trim()).map(lang => [lang, value[lang].trim()]))
+}
+function localTitleState(entry) {
+  let info = null
+  try {
+    const raw = JSON.parse(fs.readFileSync(gameFile(entry.name), 'utf8').replace(/^\uFEFF/, ''))
+    if ((!raw.levelId || String(raw.levelId) === String(entry.levelId)) && (!raw.region || raw.region === entry.region)) info = raw.levelInfo
+  } catch { /* Missing/damaged comments cannot erase cached titles. */ }
+  const titles = cleanLevelTitles(info?.titles)
+  if (info?.levelName && TITLE_LANGUAGES.includes(info.language || 'zh-cn')) titles[info.language || 'zh-cn'] = info.levelName
+  Object.assign(titles, cleanLevelTitles(entry.levelTitles))
+  const original = entry.titleOriginal || titles[entry.titleLanguage || 'zh-cn'] || baseNameOf(entry.name)
+  const customName = entry.customName ?? (baseNameOf(entry.name) !== original)
+  return { levelTitles: titles, titleOriginal: customName ? baseNameOf(entry.name) : original, customName }
+}
+function rememberLevelTitle(entry, language, title) {
+  const lang = titleLanguage(language), text = String(title || '').trim()
+  if (!text) return false
+  const idx = loadIndex()
+  const current = idx.games.find(g => g.name === entry.name && String(g.levelId) === String(entry.levelId) && g.region === entry.region)
+  if (!current) return false // A late response must not recreate or rename removed registrations.
+  const state = localTitleState(current)
+  current.levelTitles = { ...state.levelTitles, [lang]: text }
+  current.titleOriginal = state.titleOriginal
+  current.customName = state.customName
+  saveIndex(idx)
+  return true
+}
+const levelTitleJobs = new Map()
+async function refreshLevelTitles(names, language) {
+  const lang = titleLanguage(language), entries = loadIndex().games.filter(g => names.includes(g.name)), results = []
+  let cursor = 0
+  await Promise.all(Array.from({ length: Math.min(3, entries.length) }, async () => {
+    while (cursor < entries.length) {
+      const entry = entries[cursor++], key = JSON.stringify([entry.name,entry.levelId,entry.region,lang])
+      if (!levelTitleJobs.has(key)) {
+        const task = (async () => {
+          try {
+            const cached = localTitleState(entry).levelTitles[lang]
+            if (cached) return { ok:true, name:entry.name, levelId:entry.levelId, region:entry.region, language:lang, title:cached, cached:true }
+            const info = await fetchLevelDetail(entry.levelId, entry.region, lang)
+            if (!String(info.level_name || '').trim()) throw new Error('No localized level title returned')
+            if (!rememberLevelTitle(entry, lang, info.level_name)) throw new Error('Registered entry changed')
+            return { ok:true, name:entry.name, levelId:entry.levelId, region:entry.region, language:lang, title:info.level_name }
+          } catch (error) { return { ok:false, name:entry.name, levelId:entry.levelId, region:entry.region, language:lang, ...lookupFailure(error) } }
+        })()
+        levelTitleJobs.set(key, task)
+        task.finally(() => levelTitleJobs.delete(key))
+      }
+      results.push(await levelTitleJobs.get(key))
+    }
+  }))
+  return { ok:results.every(r=>r.ok), results }
+}
+
 // 只凭 level_id 查关卡信息：名字 / 官方好评率 / 类型 / 标签 / 简介 / 封面
-async function fetchLevelDetail(levelId, region) {
+async function fetchLevelDetail(levelId, region, language) {
   const rg = region || DEFAULT_REGION
+  const lang = titleLanguage(language)
   const url = detailEndpoint(rg)
     + '?level_id=' + encodeURIComponent(levelId)
     + '&region=' + encodeURIComponent(rg)
-  const text = await requestText(url, { headers: headersFor(rg), validate: jsonValidator('关卡详情') })
+    + '&lang=' + encodeURIComponent(lang)
+  const text = await requestText(url, { headers: headersFor(rg, lang), validate: jsonValidator('关卡详情') })
   let json
   try { json = JSON.parse(text) } catch { throw new Error('返回不是 JSON: ' + text.slice(0, 100)) }
   if (json.retcode !== 0) throw new Error('retcode ' + json.retcode + ': ' + json.message)
-  return (json.data && json.data.level_info) || {}
+  const info = (json.data && json.data.level_info) || {}
+  // Some responses omit identity fields; when present, they must agree with this
+  // individual request. Never cache a title explicitly belonging to another entry.
+  const identifiers = [info.level_id, json.data?.level_id].filter(value=>value != null && value !== '')
+  const regions = [info.region, json.data?.region].filter(value=>value != null && value !== '')
+  if (identifiers.some(id=>String(id)!==String(levelId)) || regions.some(region=>String(region)!==rg)) {
+    throw Object.assign(new Error('Level detail belongs to a different level or region'), { businessError:true, titleIdentityMismatch:true })
+  }
+  return info
 }
 
 // 按名字找关卡。
@@ -811,12 +885,13 @@ async function fetchLevelDetail(levelId, region) {
 //   2. 从帖子正文抠出分享链接里的关卡 id
 //   3. 调 level/detail 换成真名，按名字匹配度排序
 // 代价：只有「有人贴过分享链接」的关卡才搜得到。
-async function searchLevelByName(name, maxCandidates = 12, region = DEFAULT_REGION) {
+async function searchLevelByName(name, maxCandidates = 12, region = DEFAULT_REGION, language) {
   const kw = String(name || '').trim()
   if (!kw) return []
+  const lang = titleLanguage(language)
   const prof = profileOf(region)
-  const url = searchEndpoint(region) + '?keyword=' + encodeURIComponent(kw) + '&size=20'
-  const text = await requestText(url, { headers: { ...headersFor(region), referer: prof.webRef }, validate: jsonValidator('搜索') })
+  const url = searchEndpoint(region) + '?keyword=' + encodeURIComponent(kw) + '&size=20&lang=' + encodeURIComponent(lang)
+  const text = await requestText(url, { headers: { ...headersFor(region, lang), referer: prof.webRef }, validate: jsonValidator('搜索') })
   let json
   try { json = JSON.parse(text) } catch { throw new Error('搜索返回不是 JSON') }
   if (json.retcode !== 0) throw new Error('搜索失败：retcode ' + json.retcode + ' ' + json.message)
@@ -838,11 +913,11 @@ async function searchLevelByName(name, maxCandidates = 12, region = DEFAULT_REGI
   const detailErrs = []
   for (const [id, meta] of ids) {
     try {
-      const info = await fetchLevelDetail(id, region)
+      const info = await fetchLevelDetail(id, region, lang)
       const lname = String(info.level_name || '').trim()
       if (!lname) continue
       out.push({
-        levelId: id, name: lname, region,
+        levelId: id, name: lname, region, language: lang,
         goodRate: info.good_rate || '', playType: info.play_type || '',
         tags: info.play_tags || [], hotScore: info.hot_score || '',
         intro: info.level_intro || '', cover: (info.cover_img && info.cover_img.url) || '',
@@ -991,14 +1066,17 @@ async function walkStream(cookie, game, opts) {
 
 async function syncGame(cookie, entry, opts = {}) {
   const { full } = opts
+  const language = titleLanguage(opts.lang)
   const file = gameFile(entry.name)
   let existing = []
   let prevShortfall = null
+  let previousLevelInfo = null
   if (fs.existsSync(file)) {
     try {
       const prev = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''))
       existing = prev.replies || []
       prevShortfall = prev.shortfall || null
+      previousLevelInfo = prev.levelInfo || null
     } catch { existing = [] }
   }
   const knownIds = new Set(existing.map((r) => String(r.reply_id || r.floor_id)))
@@ -1197,15 +1275,17 @@ async function syncGame(cookie, entry, opts = {}) {
   }
 
   // 关卡信息（名字 / 好评率 / 分类），取不到不影响评论
-  let levelInfo = null
+  let levelInfo = previousLevelInfo
   try {
-    const info = await fetchLevelDetail(entry.levelId, entry.region)
+    const info = await fetchLevelDetail(entry.levelId, entry.region, language)
     levelInfo = {
       levelName: info.level_name || '', goodRate: info.good_rate || '',
+      language, titles: { ...cleanLevelTitles(previousLevelInfo?.titles), ...cleanLevelTitles(entry.levelTitles), [language]: info.level_name || '' },
       hotScore: info.hot_score || '', playType: info.play_type || '',
       tags: info.play_tags || [], intro: info.level_intro || '',
       cover: (info.cover_img && info.cover_img.url) || '',
     }
+    rememberLevelTitle(entry, language, info.level_name)
   } catch (e) {
     emit(L('log.metaFail', { msg: (e && e.message ? e.message : e) },
       '    （关卡信息获取失败，不影响评论数据：' + (e && e.message ? e.message : e) + '）'))
@@ -1355,7 +1435,7 @@ function removeNote(name, key) {
 
 /* ══════════════════════ 游戏增删查 ══════════════════════ */
 
-function addGame(name, raw, regionOverride, groupName) {
+function addGame(name, raw, regionOverride, groupName, titleInfo) {
   const parsed = parseLevelInput(raw)
   if (!parsed) {
     return { ok: false, error: '无法从「' + raw + '」里解析出 level_id。请填纯数字，或含 level_id= / id= 的网址。' }
@@ -1380,6 +1460,11 @@ function addGame(name, raw, regionOverride, groupName) {
   if (sameLevel) {
     // 显式指定了组就顺手改过去（用于「名字不同但其实是同一个游戏」的情况）
     if (wantGroup) sameLevel.group = wantGroup
+    if (titleInfo?.title) {
+      const lang = titleLanguage(titleInfo.lang), state = localTitleState(sameLevel)
+      sameLevel.levelTitles = { ...state.levelTitles, [lang]: titleInfo.title }
+      sameLevel.titleOriginal = state.titleOriginal; sameLevel.customName = state.customName
+    }
     saveIndex(idx)
     return { ok: true, name: sameLevel.name, levelId: parsed.levelId, region: parsed.region,
              group: sameLevel.group || baseNameOf(sameLevel.name), updated: true }
@@ -1412,6 +1497,7 @@ function addGame(name, raw, regionOverride, groupName) {
   idx.games.push({
     name: finalName, levelId: parsed.levelId, region: parsed.region,
     group: grp, addedAt: new Date().toISOString(),
+    ...(titleInfo?.title ? { levelTitles: { [titleLanguage(titleInfo.lang)]: titleInfo.title }, titleLanguage: titleLanguage(titleInfo.lang), titleOriginal: titleInfo.title, customName: want !== titleInfo.title } : {}),
   })
   saveIndex(idx)
   return { ok: true, name: finalName, levelId: parsed.levelId, region: parsed.region,
@@ -1526,7 +1612,7 @@ function gameSummary(g) {
   // 同一个游戏在各区服可能名字不同（甚至有人手动改名），只按名字分组会拆散。
   // 老数据没有 group 字段时，回退到「剥掉区服后缀的名字」。
   const groupName = g.group || baseNameOf(g.name)
-  const base = { name: g.name, levelId: g.levelId, region: g.region,
+  const base = { name: g.name, levelId: g.levelId, region: g.region, ...localTitleState(g),
                  group: groupName,
                  // 关卡自己的名字，**不受分组影响**。
                  // 分组填错时，界面靠这个才能看出这到底是哪个游戏。
@@ -1837,7 +1923,7 @@ module.exports = {
   ROOT, DATA_DIR,
   loadIndex, saveIndex, gameDir, gameFile, notesFile,
   parseLevelInput, normalizeLevelInput, loadOptionalCookie,
-  fetchLevelDetail, searchLevelByName, lookupFailure,
+  fetchLevelDetail, searchLevelByName, lookupFailure, TITLE_LANGUAGES, titleLanguage, refreshLevelTitles,
   syncGame, addGame, removeGame, gameSummary,
   setGameGroup, listGroups, renameGroup, dissolveGroup,
   loadNotes, saveNotes, addNote, removeNote, listAllNotes,

@@ -55,6 +55,14 @@ Only one sync job runs at a time. Entries in a group are processed individually;
 
 ## Lookup and input rules
 
+Lookup, name search, add, batch add and sync accept optional `lang` using one of the 15 interface locale codes (default `zh-cn`). Stage detail requests send it in both the `lang` query parameter and `x-rpc-language`/`accept-language` headers. This selects official localized metadata, without translating saved comments.
+
+`POST /api/level-titles` accepts `{ "names": ["registered entry"], "lang": "en-us" }` (up to 100 names) and returns per-entry `name`, `levelId`, `region`, `language`, `title`, `cached` or classified errors. Each batch fetches missing cache entries with at most three concurrent requests; concurrent requests for the same identity/language share a task. Separate language batches can overlap. Successful responses reread the latest registration before atomic cache updates. Removed or changed identities cannot be recreated by late responses. Host/Origin and JSON-write protections apply to this endpoint.
+
+Every detail request has its own `level_id`, `region` and `lang`. Returned `level_id`/`region` fields in `data` or `data.level_info`, when present, must match the request; mismatches are classified as business/data errors and cannot enter title caches. Omitted identity fields remain compatible with existing official responses. Group sync iterates entries; it never assigns one member's metadata to every region in the group. Response order is not an identity key.
+
+`GET /api/games` includes optional `levelTitles`, `titleOriginal` and `customName`; registration names and groups are not changed by title refresh. The browser selects the current locale or falls back to its original display title. Sync preserves other locale caches and refreshes the requested one. These optional fields retain the existing registration format and data-transfer compatibility. Old comment metadata without an explicit language is treated as `zh-cn`, matching the older collector's fixed request language.
+
 China regions: `cn_gf01`, `cn_qd01`. Global regions: `os_asia`, `os_euro`, `os_usa`, `os_cht`.
 
 Numeric IDs, `level_id=` links, `id=` share links, encoded links and fullwidth digits are supported. Text after a numeric parameter is not silently truncated into an ID. The multi-region form rejects a link that belongs to a different row's region.

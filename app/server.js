@@ -64,7 +64,8 @@ function scheduleShutdown(reason) {
 
 const job = { id: 0, running: false, lines: [], startedAt: null, finishedAt: null, results: [], error: null }
 
-function startSync({ name, names, full, markerBaselines = {} }) {
+function startSync({ name, names, full, markerBaselines = {}, lang }) {
+  const language = collect.titleLanguage(lang)
   if (job.running) return { ok: false, error: '已有同步任务在跑，等它结束。' }
   job.id += 1
   job.running = true
@@ -95,7 +96,7 @@ function startSync({ name, names, full, markerBaselines = {} }) {
       if (cookie) job.lines.push({ __log: true, k: 'log.cookie', p: {}, z: '（检测到 cookie.txt，将带上登录凭据）' })
       for (const g of targets) {
         try {
-          job.results.push(await collect.syncGame(cookie, g, { full: !!full, includeSubReplies: true,
+          job.results.push(await collect.syncGame(cookie, g, { full: !!full, includeSubReplies: true, lang:language,
             markerBaseline:Object.hasOwn(markerBaselines,g.name)?markerBaselines[g.name]:undefined }))
         } catch (err) {
           const msg = err && err.message ? err.message : String(err)
@@ -214,6 +215,11 @@ const server = http.createServer(async (req, res) => {
     const idx = collect.loadIndex()
     return json(res, 200, { games: idx.games.map(collect.gameSummary), groups: collect.listGroups() })
   }
+  if (req.method === 'POST' && p === '/api/level-titles') {
+    const body = await readBody(req), language = collect.titleLanguage(body.lang)
+    if (!Array.isArray(body.names) || body.names.length > 100 || body.names.some(name=>typeof name !== 'string')) return json(res,400,{ok:false,code:'invalid'})
+    return json(res,200,await collect.refreshLevelTitles(body.names,language))
+  }
   if (req.method === 'POST' && p === '/api/sub-replies') {
     if (job.running) return json(res, 409, { ok: false, errorKey: 'error.syncBusy' })
     const body = await readBody(req)
@@ -265,7 +271,7 @@ const server = http.createServer(async (req, res) => {
     const rg = u.searchParams.get('region') || ''
     if (!name.trim()) return json(res, 200, { ok: false, error: '请填游戏名字。' })
     try {
-      const list = await collect.searchLevelByName(name, 12, rg || undefined)
+      const list = await collect.searchLevelByName(name, 12, rg || undefined, collect.titleLanguage(u.searchParams.get('lang')))
       return json(res, 200, { ok: true, list })
     } catch (e) {
       return json(res, 200, { ok: false, ...collect.lookupFailure(e) })
@@ -282,11 +288,13 @@ const server = http.createServer(async (req, res) => {
     const rg = regionOverride || parsed.region
     if (!collect.REGION_LABELS[rg] || !collect.REGION_LABELS[parsed.region]) return json(res, 200, { ok: false, code: 'invalid', error: '区服无效。' })
     try {
-      const info = await collect.fetchLevelDetail(parsed.levelId, rg)
+      const language = collect.titleLanguage(u.searchParams.get('lang'))
+      const info = await collect.fetchLevelDetail(parsed.levelId, rg, language)
       return json(res, 200, {
         ok: true,
         levelId: parsed.levelId,
         region: rg,
+        language,
         regionLabel: collect.regionLabel(rg),
         name: info.level_name || '',
         baseName: collect.baseNameOf(info.level_name || ''),
@@ -308,7 +316,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && p === '/api/add') {
     const b = await readBody(req)
-    let name = String(b.name || '').trim()
+    let name = String(b.name || '').trim(), titleInfo
     const parsed = collect.parseLevelInput(b.input)
     if (!parsed) {
       return json(res, 200, { ok: false, code: 'invalid', error: '无法从输入中解析 level_id。' })
@@ -316,11 +324,13 @@ const server = http.createServer(async (req, res) => {
     const rg = String(b.region || '').trim() || parsed.region
     // Validate even when a custom name is supplied. Never register an unconfirmed numeric fallback.
     try {
-      const info = await collect.fetchLevelDetail(parsed.levelId, rg)
+      const language = collect.titleLanguage(b.lang)
+      const info = await collect.fetchLevelDetail(parsed.levelId, rg, language)
       if (!String(info.level_name || '').trim()) throw new Error('No level name returned')
       if (!name) name = String(info.level_name).trim()
+      titleInfo = { lang:language, title:String(info.level_name).trim() }
     } catch (error) { return json(res, 200, { ok: false, ...collect.lookupFailure(error) }) }
-    return json(res, 200, collect.addGame(name, b.input, rg, b.group))
+    return json(res, 200, collect.addGame(name, b.input, rg, b.group, titleInfo))
   }
 
   if (req.method === 'POST' && p === '/api/remove') {
@@ -422,7 +432,8 @@ const server = http.createServer(async (req, res) => {
 
   json(res, 404, { error: 'not found' })
   } catch (error) {
-    if (!res.headersSent) json(res, 500, { ok: false, errorKey: 'error.storage', error: String(error.message || error) })
+    if (!res.headersSent && error.invalidLanguage) json(res,400,{ok:false,code:'invalid',error:String(error.message)})
+    else if (!res.headersSent) json(res, 500, { ok: false, errorKey: 'error.storage', error: String(error.message || error) })
     else res.end()
   }
 })

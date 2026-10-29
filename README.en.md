@@ -17,6 +17,14 @@ Tutorial progress is stored only in each user's browser localStorage and is neve
 
 A local tool for collecting public level comments from Miyoushe (China servers) and HoYoLAB (global servers). Browse, search, filter and export comments, identify default comment templates, and save comments with personal notes. The interface supports 15 languages; collected comments retain their original text.
 
+## Localized stage titles
+
+ID/link lookup, name search, imports and synchronization pass the selected interface language to the official service. Switching languages uses a previously saved title or tries to fetch it in the background. Missing, empty or unavailable localized titles fall back to the original title; the tool does not machine-translate stage titles or substitute a different language. Failures retain the original and report the network/proxy classification. Switching languages or syncing can retry; sync refreshes the current language's metadata.
+
+The selector, management rows and note source labels use the retrieved titles. Comments and personal notes are unchanged. Optional title caches in `config/games.json` transfer with existing configuration. Registration keys, storage folders, IDs, regions and group names stay stable; marked custom display aliases are retained. An overview continues to display your group name. Name searches remain limited by the public post index.
+
+Titles are requested and cached independently for each level ID, region and language. Each title batch permits up to three independent concurrent requests; group comment sync processes registered entries individually. Results match identities rather than response positions. An explicitly mismatched level ID or region in a detail response is rejected, while omitted optional identity fields remain compatible. One region's failure cannot supply another region's title.
+
 ## Getting started
 
 On Windows, double-click **`Miliastra Wonderland Comment Collector.exe`**. The launcher has an application icon, opens the interface in your default browser, and runs the local service without a console window. No administrator access is required.

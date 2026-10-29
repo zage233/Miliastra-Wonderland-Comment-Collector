@@ -8,6 +8,8 @@ async function importBatch(body, collect) {
     return { ok: false, code: 'invalid', results: [] }
   }
   const items = body.items.filter(item => item && item.include !== false && String(item.input || '').trim())
+  let language
+  try { language = collect.titleLanguage(body.lang) } catch { return { ok:false,code:'invalid',results:[] } }
   if (!items.length) return { ok: false, code: 'empty', results: [] }
   const seen = new Set()
   // Reject malformed requests before any network access or index writes.
@@ -32,13 +34,13 @@ async function importBatch(body, collect) {
       results.push({ region, ok: false, code: 'mismatch' }); continue
     }
     try {
-      const info = await collect.fetchLevelDetail(parsed.levelId, region)
+      const info = await collect.fetchLevelDetail(parsed.levelId, region, language)
       const name = String(info.level_name || '').trim()
       if (!name) throw new Error('No level name returned')
       // Reuse an existing first entry's group when the group field is blank.
       const existing = collect.loadIndex().games.find(g => String(g.levelId) === parsed.levelId && g.region === region)
       const targetGroup = group || (existing && existing.group) || name
-      const saved = collect.addGame(name, input, region, targetGroup)
+      const saved = collect.addGame(name, input, region, targetGroup, { lang:language, title:name })
       if (!saved.ok) throw new Error(saved.error || 'Save failed')
       group = saved.group || targetGroup
       results.push({ ...saved, region, ok: true })

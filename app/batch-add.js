@@ -243,7 +243,7 @@
     status.textContent = t('btn.lookup') + '…'
     try {
       const response = await fetch('/api/level-detail?input=' + encodeURIComponent(input) +
-        '&region=' + encodeURIComponent(region), { signal: controller.signal })
+        '&region=' + encodeURIComponent(region) + '&lang=' + encodeURIComponent(state.lang || 'zh-cn'), { signal: controller.signal })
       if (!response.ok) throw new Error('HTTP ' + response.status)
       const info = await response.json()
       if (current.version !== version || controller.signal.aborted || !dialog.open || busy) return
@@ -353,7 +353,7 @@
     lock(true)
     try {
       const response = await fetch('/api/add-batch', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items, group: $b('batchGroup').value.trim() }) })
+        body: JSON.stringify({ items, group: $b('batchGroup').value.trim(), lang:state.lang }) })
       if (!response.ok) throw new Error('HTTP ' + response.status)
       const result = await response.json()
       if (!Array.isArray(result.results) || !result.results.length) {

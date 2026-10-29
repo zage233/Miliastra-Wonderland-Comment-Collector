@@ -1123,7 +1123,10 @@ function regionName(code, fallback) {
   return key ? t(key) : (fallback || String(code || ''))
 }
 // 便签里的「来自哪关 · 哪服」，两边都要能被翻译
-function noteGameName(n) { return n._levelName || n.game || n.gameName || '' }
+function noteGameName(n) {
+  const entry = state.games.find(g=>g.name === (n._gameName || n.gameName))
+  return entry?.levelName || n._levelName || n.game || n.gameName || ''
+}
 function noteRegionName(n) { return regionName(n._region, n._regionLabel || n.regionLabel || n._region || '') }
 
 let dataLocationInfo = null
@@ -1187,6 +1190,7 @@ function initLang() {
   sel.value = state.lang
   sel.onchange = () => {
     state.lang = sel.value
+    applyTitleLanguage()
     try { localStorage.setItem('qx-lang', state.lang) } catch { /* 忽略 */ }
     applyLang()
     renderAll(true)
@@ -1199,8 +1203,39 @@ function initLang() {
     syncGameSelectLabel(); renderGameSelectPanel(); updateGroupBtn()
     if (dpEl && !dpEl.hidden) dpRender()   // 日历开着就按新语言重画
     repaintLog()                            // 已经打出来的同步日志也按新语言重画
+    ensureLocalizedTitles()
   }
   applyLang()
+}
+function applyTitleLanguage() {
+  for (const entry of state.games) {
+    entry.originalLevelName ||= entry.levelName || entry.name
+    entry.levelName = (!entry.customName && entry.levelTitles?.[state.lang]) || entry.originalLevelName
+  }
+}
+const titleAttempts = new Set()
+async function ensureLocalizedTitles() {
+  const lang = state.lang, missing = state.games.filter(g=>!g.customName && !g.levelTitles?.[lang] && !titleAttempts.has(JSON.stringify([g.name,g.levelId,g.region,lang])))
+  for (const entry of missing) titleAttempts.add(JSON.stringify([entry.name,entry.levelId,entry.region,lang]))
+  for (let offset=0;offset<missing.length;offset+=20) {
+    try {
+      const result = await postJson('/api/level-titles',{lang,names:missing.slice(offset,offset+20).map(g=>g.name)})
+      let failure
+      for (const row of result.results || []) {
+        const current = state.games.find(g=>g.name===row.name && String(g.levelId)===String(row.levelId) && g.region===row.region)
+        if (!current) continue
+        if (!row.ok) { failure ||= row; continue }
+        if (current && typeof row.title === 'string' && row.title.trim() && row.language===lang) current.levelTitles={...current.levelTitles,[lang]:row.title}
+      }
+      applyTitleLanguage()
+      syncGameSelectLabel();renderGameSelectPanel();renderNotes();renderMgmt()
+      if (lang===state.lang && !(typeof polling!=='undefined' && polling) && !(typeof syncStarting!=='undefined' && syncStarting) && (!result.ok || failure)) setStatus('err',t('title.failed')+' '+lookupErrorText(failure || result))
+    } catch(error) {
+      if (lang===state.lang && !(typeof polling!=='undefined' && polling) && !(typeof syncStarting!=='undefined' && syncStarting)) setStatus('err',t('title.failed')+' '+lookupErrorText({code:'network',error:error.message}))
+    } finally {
+      for(const entry of missing.slice(offset,offset+20))titleAttempts.delete(JSON.stringify([entry.name,entry.levelId,entry.region,lang]))
+    }
+  }
 }
 const esc = v => (v == null ? '' : String(v))
 
@@ -1910,6 +1945,7 @@ async function loadGames(keep) {
   if (seq !== gameLoadSeq) return
   if (!Array.isArray(j.games)) throw new Error(lookupErrorText(j))
   state.games = j.games || []
+  applyTitleLanguage()
   state.groups = j.groups || []
   if (state.groupOverview && !state.games.some(g => groupOf(g) === state.groupOverview)) state.groupOverview = null
   if (!state.games.length) {
@@ -1928,6 +1964,7 @@ async function loadGames(keep) {
   renderGameSelectPanel()
   updateGroupBtn()
   renderMgmt()
+  ensureLocalizedTitles()
 }
 
 // 当前选中项所在「组」的成员：同一款游戏在各国服的条目
@@ -2196,10 +2233,10 @@ function renderMgmt() {
     inner.append(arw, nm, meta)
 
     // 组名和关卡名不一致时提醒（分组填错了）
-    const lset = new Set(list.map((x) => x.levelName || x.name))
+    const lset = new Set(list.map((x) => x.originalLevelName || x.levelName || x.name))
     if (lset.size === 1 && !lset.has(key)) {
       const warn = document.createElement('span'); warn.className = 'gwarn'
-      warn.textContent = t('mgmt.actualName').replace('{name}', [...lset][0])
+      warn.textContent = t('mgmt.actualName').replace('{name}', [...new Set(list.map(x=>x.levelName || x.name))].join(' / '))
       inner.append(warn)
     }
 
@@ -2465,7 +2502,7 @@ function setStatus(kind, text) { $('dot').className = 'dot ' + kind; $('statusTe
 async function runSync(full, name, all, names) {
   if (polling || syncStarting) return false
   const g = state.games[state.gameIdx]
-  const body = { full: !!full }
+  const body = { full: !!full, lang:state.lang }
   if (!all && !name && !names && state.groupOverview) names = groupMembers().map(g => g.name)
   if (all) {
     // 不传目标 → 服务端同步全部
@@ -2826,7 +2863,7 @@ async function lookup() {
   try {
     const rg = addRegion()
     const info = await (await fetch('/api/level-detail?input=' + encodeURIComponent(input)
-      + '&region=' + encodeURIComponent(rg), { signal: controller.signal })).json()
+      + '&region=' + encodeURIComponent(rg) + '&lang=' + encodeURIComponent(state.lang), { signal: controller.signal })).json()
     if (seq !== lookupSeq) return
     if (info.ok && info.region) {
       if (info.region.startsWith('os_')) selectAddServer('os', info.region)
@@ -2908,7 +2945,7 @@ async function doSearch() {
   const btn = $('btnSearch'); btn.disabled = true
   try {
     const r = await (await fetch('/api/search-level?name=' + encodeURIComponent(name)
-      + '&region=' + encodeURIComponent(addRegion()))).json()
+      + '&region=' + encodeURIComponent(addRegion()) + '&lang=' + encodeURIComponent(state.lang))).json()
     if (!r.ok) { msg.className = 'msg err'; msg.textContent = lookupErrorText(r); msg.title = r.error || ''; return }
     msg.className = 'msg'
     msg.textContent = r.list.length ? t('search.found').replace('{n}', r.list.length) : ''
@@ -2954,7 +2991,7 @@ $('addOk').onclick = async () => {
   addingGame = true; $('addOk').disabled = true; $('btnAdd').disabled = true
   try {
     msg.className = 'msg'; msg.textContent = t('add.busy')
-    const j = await postJson('/api/add', { name, input, region: addRegion(), group: addGroupName() })
+    const j = await postJson('/api/add', { name, input, region: addRegion(), group: addGroupName(), lang:state.lang })
     if (!j.ok) { msg.className = 'msg err'; msg.textContent = lookupErrorText(j); msg.title = j.error || ''; return }
     await loadGames(true)
     const index = state.games.findIndex(g => g.name === j.name)

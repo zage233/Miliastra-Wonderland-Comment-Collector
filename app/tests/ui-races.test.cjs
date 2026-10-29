@@ -28,7 +28,7 @@ test('评论时间、ISO 收藏时间和毫秒时间统一按本地时区显示�
   assert.ok(vm.runInContext('fmtTime(iso,true)',c).endsWith(':02'))
   assert.equal(vm.runInContext("fmtTime('not a time')",c),'')
 })
-function gameContext(fetch){const c={state:{games:[{name:'A'},{name:'B'}],gameIdx:1,selectOpen:new Set()},gameLoadSeq:0,fetch,groupOf:g=>g.name,syncGameSelectLabel(){},renderGameSelectPanel(){},updateGroupBtn(){},renderMgmt(){},lookupErrorText:()=> 'error'};vm.createContext(c);const start=html.indexOf('async function loadGames(');vm.runInContext(html.slice(start,html.indexOf('// 当前选中项',start)),c);return c}
+function gameContext(fetch){const c={state:{games:[{name:'A'},{name:'B'}],gameIdx:1,selectOpen:new Set()},gameLoadSeq:0,fetch,groupOf:g=>g.name,syncGameSelectLabel(){},renderGameSelectPanel(){},updateGroupBtn(){},renderMgmt(){},applyTitleLanguage(){},ensureLocalizedTitles(){},lookupErrorText:()=> 'error'};vm.createContext(c);const start=html.indexOf('async function loadGames(');vm.runInContext(html.slice(start,html.indexOf('// 当前选中项',start)),c);return c}
 test('登记列表重排后保持原选择，旧刷新响应不会覆盖新列表',async()=>{
   const c=gameContext(async()=>({json:async()=>({games:[{name:'B'},{name:'A'}],groups:[]})}))
   await vm.runInContext('loadGames(true)',c)

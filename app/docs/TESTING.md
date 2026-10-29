@@ -1,5 +1,13 @@
 # Regression testing
 
+## Localized title regression
+
+Isolation additions cover six regions and two overlapping language batches with deliberately reversed completion order, one-region failure/retry, three repeated incremental/full sync rounds, explicit foreign level/region response rejection, and title refresh overlapping comment sync and a group edit. Tests use the same numeric ID across regions to expose incorrectly shared caches. The complete source regression is run in three consecutive rounds; generated delivery and extracted ZIP are checked separately.
+
+`localized-titles.test.cjs` covers all 15 locale query/header values, default-language compatibility, localized search candidates, persistent locale caches, cross-region identity isolation, empty/failed responses, retries, deletion during a request, concurrent deduplication, group edits during a request, custom aliases, sync metadata, unchanged comment bodies, rapid language switching and fallback to the original rather than the previous locale. The real API suite checks localized detail/search/cache responses, stable registration/group/source files and endpoint input/origin protections.
+
+Live read-only verification on 2026-10-29 confirmed distinct `zh-cn` and `en-us` `level_name` values for two user-provided global stages, including the DPS dummy example. This verifies those two stages/languages, not that every stage has all 15 translations. Browser QA uses isolated mock data to check label switching, note sources, stable groups and fallback; no production registrations are added.
+
 ## Notes and upgrade data transfer
 
 `note-replies.test.cjs` verifies nested reply snapshots, legacy note enrichment, cross-region identity isolation, text preservation, missing/deleted parents, reused floor numbers, complete empty threads, persistence after individual refresh, collapsed rendering, comment-filter independence and reply CSV export. The real API suite additionally verifies that full sync persists newly added replies in existing notes.

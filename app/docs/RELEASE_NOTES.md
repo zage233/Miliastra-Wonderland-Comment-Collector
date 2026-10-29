@@ -1,8 +1,12 @@
-# Release notes · 2026-10-28
+# Release notes · 2026-10-29
 
 [简体中文](../../README.md) · [English](../../README.en.md) · [交付核验与上传指南 / Delivery and upload guide](RELEASE-CHECK.md)
 
 ## 本次更新
+
+- 补充跨服标题隔离验证：六区服、两种语言乱序返回与部分失败分别保存；接口明确返回其他关卡 ID 或区服时拒绝缓存。分组同步、标题查询及改组交错时仍保留各自身份，文档明确每批独立请求的并发规则。
+
+- 关卡标题支持官方多语言文本：查询、搜索、导入及同步携带当前界面语言。切换语言优先用本地缓存，缺少时后台查询；无对应标题或查询失败则显示原标题。选择器、管理页和便签来源随之更新，分组与数据目录保持稳定，不改写评论和备注。
 
 - 修复便签缺少子回复：收藏时保存本地回复，已有便签自动关联本地评论；后续同步和单串刷新持久更新回复快照，保留个人备注及主评论原文。便签支持折叠、层级与对象显示，CSV 增加回复数和回复正文，独立于评论页更新筛选。
 - 增加保留数据的版本更新流程及 `migrate-data.cjs`：校验完整新版、验证旧格式、逐文件核对迁入，保留旧版回退副本。新版已有数据、格式不兼容或后台未关闭时停止，避免空配置覆盖个人登记。
@@ -25,6 +29,10 @@
 首次使用仍需要 Node.js 18 或更新版本；EXE 是 Windows 启动器，不是内置 Node.js 的单文件程序。教程记录、外观偏好保存在浏览器，不随交付包传播。同一浏览器以前访问过相同地址时，教程不会因为解压了新文件夹而自动重置，可点“新手引导”重新打开。
 
 ## Changes in this delivery
+
+- Strengthened region-title isolation checks and rejected explicit level/region mismatches in detail responses. Regression covers six-region/two-language reordering, partial failures, repeated sync, overlapping metadata/comment requests and group edits. Documentation distinguishes independent requests from batch concurrency.
+
+- Stage titles now use official localized metadata for the selected interface language across lookup, search, import and sync. Switching languages uses persistent caches or a background lookup, with original-title fallback. Group names, registration/storage identity, comments and personal notes remain stable.
 
 - Saved notes now include collapsible local reply snapshots, updated by normal sync and individual thread refresh while retaining personal text and the original parent snapshot. Legacy notes read local replies without being saved again. Notes CSV includes replies and does not inherit comment-list update filters.
 - Added a validated, hash-checked data transfer into a clean new installation. Previous configuration and collections remain untouched; incompatible data, active services and used destinations stop the transfer. See the [upgrade guide](UPDATING.md).

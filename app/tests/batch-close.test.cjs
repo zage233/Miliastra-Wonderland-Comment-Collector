@@ -19,7 +19,7 @@ test('成功默认先关弹窗再同步；勾选保留、部分失败或全部�
     node('batchSync').checked = true
     node('batchKeepOpen').checked = mode === 'keep'
     const results = regions.map((region, i) => ({ region, name: region, ok: mode !== 'failed' && !(mode === 'partial' && i === 1), code: 'network' }))
-    const c = { $b: node, busy: false, saved: new Map(), regions, stopLookup() {}, lock() {},
+    const c = { $b: node, state:{lang:'zh-cn'}, busy: false, saved: new Map(), regions, stopLookup() {}, lock() {},
       t: key => key, lookupErrorText: () => 'failure', dialog: { close: () => events.push('close') },
       fetch: async () => ({ ok: true, json: async () => ({ results, group: 'Example group' }) }),
       loadGames: async () => events.push('load'), runSync: async () => { events.push('sync'); return true } }

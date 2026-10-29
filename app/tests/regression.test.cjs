@@ -353,7 +353,7 @@ test('无匹配结果也更新筛选计数，清空数据时移除旧计数', ()
 function lookupContext(fetch) {
   const nodes = Object.fromEntries(['cn','os','addMsg','preview','inName'].map(id=>[id,{value:'',classList:{remove(){}},placeholder:''}]))
   const previews=[]
-  const c = {normalizeLevelInput:require('../collect.js').normalizeLevelInput,AbortController,fetch,nodes,previews,active:'cn',region:'cn_gf01',$:id=>nodes[id],
+  const c = {state:{lang:'zh-cn'},normalizeLevelInput:require('../collect.js').normalizeLevelInput,AbortController,fetch,nodes,previews,active:'cn',region:'cn_gf01',$:id=>nodes[id],
     t:key=>key,showPreview:info=>previews.push(info.name)}
   c.addInputEl=()=>nodes[c.active]
   c.addRegion=()=>c.region

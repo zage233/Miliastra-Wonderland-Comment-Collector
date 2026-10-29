@@ -88,6 +88,20 @@ test('真实本地服务：导入、同步、便签、分组、异常输入及�
     assert.ok(files.some(file=>JSON.parse(fs.readFileSync(file,'utf8')).notes.some(n=>n.subReplies?.length===4)))
     fs.writeFileSync(path.join(dir,'phase.json'),'{"phase":1}')
   })
+  await t.test('多语言详情、搜索和缓存接口使用指定语言，原登记及评论文件不变',async()=>{
+    const beforeGames=(await call('/api/games')).data.games,dirs=fs.readdirSync(path.join(dir,'data'))
+    const beforeComments=Object.fromEntries(dirs.map(name=>[name,fs.readFileSync(path.join(dir,'data',name,'comments.json'),'utf8')]))
+    const detail=await call('/api/level-detail?input=111111111&region=os_asia&lang=en-us');assert.equal(detail.data.name,'Localized Audit Alpha');assert.equal(detail.data.language,'en-us')
+    const search=await call('/api/search-level?name=Alpha&region=os_asia&lang=ja-jp');assert.equal(search.data.list[0].name,'日本語 Audit Alpha')
+    const result=await call('/api/level-titles',{names:[a.name,b.name],lang:'en-us'});assert.equal(result.data.ok,true)
+    const afterGames=(await call('/api/games')).data.games
+    assert.deepEqual(afterGames.map(g=>[g.name,g.region,g.group]),beforeGames.map(g=>[g.name,g.region,g.group]))
+    assert.equal(afterGames.find(g=>g.name===a.name).levelTitles['en-us'],'Localized Audit Alpha')
+    for(const name of dirs)assert.equal(fs.readFileSync(path.join(dir,'data',name,'comments.json'),'utf8'),beforeComments[name])
+    assert.equal((await call('/api/level-titles',{names:'invalid',lang:'en-us'})).status,400)
+    assert.equal((await call('/api/level-titles',{names:[a.name],lang:'unsupported'})).status,400)
+    const blocked=await fetch(base+'/api/level-titles',{method:'POST',headers:{Origin:'https://untrusted.example','Content-Type':'application/json'},body:JSON.stringify({names:[a.name],lang:'en-us'})});assert.equal(blocked.status,403)
+  })
   await t.test('跨站/伪装 Host/非 JSON 写请求被拦截，删除与便签接口不改变原文件，同源及信标可用',async()=>{
     const rawStatus=headers=>new Promise((resolve,reject)=>{require('node:http').get(base+'/api/life',{headers},res=>{res.resume();resolve(res.statusCode)}).on('error',reject)})
     const indexFile=path.join(dir,'config','games.json'),beforeIndex=fs.readFileSync(indexFile,'utf8')
@@ -145,7 +159,7 @@ test('真实本地服务：导入、同步、便签、分组、异常输入及�
     await sync({names:[d.name,e.name]})
     const front={state:{games:[],gameIdx:0,groupOverview:'Overview',selectOpen:new Set(),loadSeq:0,thr:8},gameLoadSeq:0,updateRounds:{remember(){}},
       fetch:url=>fetch(base+url),groupOf:g=>g.group||g.baseName||g.name,norm:s=>s,classifyKnown:()=>null,t:k=>k,
-      syncGameSelectLabel(){},renderGameSelectPanel(){},updateGroupBtn(){},renderMgmt(){},renderAll(){},loadNotes:async()=>{},regionName:r=>r,
+      syncGameSelectLabel(){},renderGameSelectPanel(){},updateGroupBtn(){},renderMgmt(){},renderAll(){},loadNotes:async()=>{},regionName:r=>r,applyTitleLanguage(){},ensureLocalizedTitles(){},
       lookupErrorText:()=> 'error',setStatus(){},setTimeout,confirm:()=>true,chosenGroup:()=>front.nextGroup,
       $:id=>nodes[id]||(nodes[id]={close(){}}),postJson:async(url,body)=>(await call(url,body)).data}
     vm.createContext(front)

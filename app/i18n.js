@@ -1,6 +1,6 @@
 /* 奇域评论收集器：界面语言包。
  * 每种语言一个词典；新增文案请同步全部语言并保留占位符。
- * 游戏名称、评论原文、便签内容和帮助中的原文示例不翻译。
+ * 关卡标题按接口提供的对应语言读取；评论原文、便签内容和原文示例不改写。
  */
 (function () {
   'use strict'
@@ -6843,6 +6843,8 @@
   for(const [lang,text] of Object.entries(replyRelationLabels)){const values=text.split('|');['sub.replyTo','sub.replyMain','sub.relationHint'].forEach((key,i)=>QX_I18N[lang][key]=values[i])}
   const markerRestartLabels={"zh-cn":"界面已更新，后台服务仍是旧版本。请重启收集器并刷新页面后再同步。","zh-tw":"介面已更新，背景服務仍是舊版本。請重新啟動收集器並重新整理頁面後再同步。","en-us":"The interface is newer than the service. Restart the collector and reload before syncing again.","ja-jp":"画面よりサービスが古い状態です。収集ツールを再起動し、ページを再読み込みしてください。","ko-kr":"화면보다 서버 버전이 오래되었습니다. 수집기를 재시작하고 페이지를 새로고침하세요.","es-es":"El servicio es anterior a la interfaz. Reinicia el recolector y recarga la página.","fr-fr":"Le service est plus ancien que l’interface. Redémarrez le collecteur et rechargez la page.","ru-ru":"Сервис старее интерфейса. Перезапустите сборщик и обновите страницу.","th-th":"บริการเป็นรุ่นเก่ากว่าหน้าเว็บ โปรดเริ่มตัวเก็บข้อมูลใหม่และโหลดหน้าอีกครั้ง","vi-vn":"Dịch vụ cũ hơn giao diện. Hãy khởi động lại công cụ và tải lại trang.","de-de":"Der Dienst ist älter als die Oberfläche. Sammler neu starten und Seite neu laden.","id-id":"Layanan lebih lama daripada antarmuka. Mulai ulang pengumpul dan muat ulang halaman.","pt-pt":"O serviço é anterior à interface. Reinicia o coletor e recarrega a página.","tr-tr":"Hizmet arayüzden eski. Toplayıcıyı yeniden başlatıp sayfayı yenileyin.","it-it":"Il servizio è precedente all’interfaccia. Riavvia il raccoglitore e ricarica la pagina."}
   for(const [lang,text]of Object.entries(markerRestartLabels))QX_I18N[lang]["new.restartRequired"]=text
+  const titleFailureLabels={"zh-cn":"对应语言的关卡标题未能获取，暂用原标题。","zh-tw":"未能取得對應語言的關卡標題，暫用原標題。","en-us":"Could not retrieve the localized stage title; keeping the original title.","ja-jp":"対応する言語のステージ名を取得できないため、元の名前を表示します。","ko-kr":"해당 언어의 스테이지 제목을 가져오지 못해 원래 제목을 표시합니다.","es-es":"No se pudo obtener el título localizado; se mantiene el original.","fr-fr":"Impossible de récupérer le titre localisé ; le titre d’origine est conservé.","ru-ru":"Не удалось получить название на выбранном языке; сохранено исходное название.","th-th":"ไม่สามารถดึงชื่อด่านในภาษาที่เลือก จึงแสดงชื่อเดิม","vi-vn":"Không lấy được tên màn theo ngôn ngữ đã chọn; giữ tên gốc.","de-de":"Der übersetzte Stufentitel konnte nicht geladen werden; der Originaltitel bleibt erhalten.","id-id":"Judul tahap dalam bahasa pilihan tidak dapat diambil; judul asli tetap digunakan.","pt-pt":"Não foi possível obter o título localizado; mantém-se o título original.","tr-tr":"Seçilen dilde bölüm başlığı alınamadı; özgün başlık korunuyor.","it-it":"Impossibile recuperare il titolo localizzato; viene mantenuto quello originale."}
+  for(const [lang,text]of Object.entries(titleFailureLabels))QX_I18N[lang]['title.failed']=text
   window.QX_LANGS = QX_LANGS
   window.QX_I18N = QX_I18N
   window.QX_TARGETS = QX_TARGETS
