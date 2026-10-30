@@ -49,7 +49,7 @@ Search, rating/template and date filters, statistics, sorting and CSV export app
 
 ## Hands-on first-run guide
 
-The first visit opens a six-step hands-on guide: choose a language, actually add and sync a level, try label filters, star a comment, write and verify a note, and review the main tabs. Enter your own level ID or share link. Lookup starts after a short typing pause and repeats when the region changes; the lookup button and Enter key remain available. Confirm the preview before adding. This registers the level and downloads real comments; saved comments and personal notes are also stored locally. Simplified Chinese starts with China servers; other languages start with global servers, with manual region selection available.
+The first visit opens a seven-step hands-on guide: choose a language, actually add and sync a level, try label filters, star a comment, write and verify a note, learn optional sign-in and reply permissions, and review the main tabs. Enter your own level ID or share link. Lookup starts after a short typing pause and repeats when the region changes; the lookup button and Enter key remain available. Confirm the preview before adding. This registers the level and downloads real comments; saved comments and personal notes are also stored locally. Simplified Chinese starts with China servers; other languages start with global servers, with manual region selection available.
 
 The target uses a continuous gold halo, a directional arrow and a step label that track scrolling and window size. These disappear when the guide ends; reduced-motion preferences retain a static highlight.
 
@@ -197,3 +197,25 @@ Comment/reply updates identify content newly saved by sync since its markers wer
 Direct replies to the main comment no longer show a redundant target label. An addressee label appears only when supplied by the service. Hide-default controls follow the theme in normal, selected, hover and focus states; custom hover colors also apply.
 
 The header slides away when scrolling down into the reading area, and returns when scrolling up or reaching the top. Menus, dialogs, tutorials and keyboard navigation keep controls accessible. Small movements use hysteresis; reduced-motion preferences remove the animation. Desktop and narrow layouts share this behavior.
+
+## Official accounts and local replies
+
+The official sign-in entry now restores the window and requests foreground focus, waiting for a native visibility acknowledgement before reporting success. Click again to restore an existing window. If Windows declines focus, an explicit message points to the taskbar. Restart the backend and hard-refresh after updating. Window visibility never proves sign-in or character permission.
+
+Sign in through Management → Official accounts, then click Reply beside a review or subreply. The composer matches your character name and UID on the target server and rechecks the account before posting. Own subreplies offer a confirmed delete action under “Manage / delete”; root-review deletion is not implemented. China and global sessions remain separate. Unknown write results are never retried automatically. Sign-in requires Windows x64 and Microsoft Edge WebView2 Runtime; public collection and notes do not require it. WebView2 dependencies retain their LICENSE and NOTICE files.
+
+One authorized Miyoushe reply was posted and confirmed by official readback. A user-initiated China deletion was checked read-only against the official list. The new pre/post-deletion verification flow has isolated coverage; HoYoLAB posting after real login remains unverified. The [AI integration guide](app/docs/AI-INTEGRATION.md) (Chinese) and [OpenAPI contract](app/docs/openapi.json) cover latest roots/replies, local sync, pagination, deduplication, sender roles and persistent write receipts. Children are sorted by their own publication time, so recent replies under old reviews are discoverable. See [account details](app/docs/ACCOUNTS.md).
+
+
+Self-addressed reply labels are hidden when author and addressee UIDs match; original text and target IDs are retained. Deletion now checks ownership, performs one delete request, and requires a complete official readback proving absence before removing the local row. Unconfirmed outcomes retain local data. Expanded account settings use a compact borderless container.
+
+
+Reply/management dialogs now default to closing after a confirmed successful operation and successful local update. Uncheck the option to stay; the browser remembers it. Failed, unknown or partially saved outcomes remain open. Refreshing an uncertain deletion performs an authenticated read-only check and updates the original receipt without another delete POST.
+
+## Automatic deletion follow-up and login window sizing
+
+Unconfirmed deletions now receive automatic background read-only follow-up, with increasing intervals, at most 8 scheduled checks within 5 minutes (an in-flight read may finish later). Confirmed official absence automatically updates local replies, counts, update markers and current note snapshots, preserving personal text and deletion history. Checks continue after closing the dialog or page; service restart resumes the remaining deadline. Persistent presence, read/pagination errors or local-save failures pause at the limit; login or ownership mismatch pauses earlier. Continue checking resumes reads of the original attempt, never another deletion POST. Waiting intervals allow sync; actual checks and local mutations are serialized.
+
+The official login window defaults to Fit window, scaling the desktop page to keep its right-hand account entry visible at narrow sizes. The zoom selector and − / + provide manual control; select Fit window to resume automatic sizing. Credentials still go directly into the official page.
+
+Account settings now has a bordered Show/Hide control that respects manual collapse. Missing login or server characters is explained, and an accented permissions notice distinguishes your own server replies from other players’ content. New strings are available in all 15 interface languages. The guide adds an optional official sign-in lesson without automatically posting or deleting. See [security checks and local trust boundaries](app/docs/SECURITY.md).

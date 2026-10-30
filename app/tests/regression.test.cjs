@@ -265,6 +265,7 @@ test('所有语言键和占位符齐全，页面直接引用没有缺失', () =>
   const c = {window:{}}
   vm.createContext(c)
   vm.runInContext(fs.readFileSync(path.join(root, 'i18n.js'), 'utf8'), c)
+  vm.runInContext(fs.readFileSync(path.join(root, 'reply-i18n.js'), 'utf8'), c)
   const base = c.window.QX_I18N['zh-cn']
   const params = s => (s.match(/\{\w+\}/g)||[]).sort()
   for (const [lang, entries] of Object.entries(c.window.QX_I18N)) {
@@ -279,6 +280,7 @@ test('翻译没有空文案或意外中文残留，评论编号不再译为建�
   const c={window:{}}
   vm.createContext(c)
   vm.runInContext(fs.readFileSync(path.join(root,'i18n.js'),'utf8'),c)
+  vm.runInContext(fs.readFileSync(path.join(root,'reply-i18n.js'),'utf8'),c)
   const all=c.window.QX_I18N
   const buildingWords={'en-us':'Floor','ja-jp':'階','ko-kr':'층','es-es':'Planta','fr-fr':'Étage','ru-ru':'Этаж',
     'th-th':'ชั้น','vi-vn':'Tầng','de-de':'Etage','id-id':'Lantai','pt-pt':'Piso','tr-tr':'Kat','it-it':'Piano'}
@@ -440,13 +442,19 @@ test('默认 CMD 转交无窗口启动器后立即退出；VBS 用隐藏窗口�
 })
 
 test('隐藏启动保留关页自动退出，刷新后新心跳会阻止退出', async () => {
-  for(const refreshed of [false,true]) {
+  for(const scenario of [{refreshed:false},{refreshed:true},{accountOpen:true},{lateOpen:true},{replyPending:true},{background:true},{lateBackground:true}]) {
+    const refreshed=!!scenario.refreshed
+    let accountOpen=!!scenario.accountOpen
+    let background=!!scenario.background
     let now=1000,handler,exitCode=null,openedHidden=false
     const timers=[]
     const server={on(){},listen(port,host,callback){callback()},close(callback){callback()}}
     const proc={argv:['node','server.js'],env:{},on(){},exit:code=>{exitCode=code}}
     const ctx={require:n=>n==='node:http'?{createServer:fn=>{handler=fn;return server}}:
       n==='node:child_process'?{exec:(command,options)=>{openedHidden=options.windowsHide===true}}:
+      n==='./accounts.js'?{createAccounts:()=>({hasOpenWindows:()=>accountOpen})}:
+      n==='./replies.js'?{createReplyService:()=>({hasPending:()=>!!scenario.replyPending,hasBackgroundChecks:()=>background})}:
+      n==='./latest.js'?{createLatest:()=>({})}:
       n==='./collect.js'?{ROOT:root,DATA_DIR:path.join(root,'data')}:n==='./import-batch.js'?require('../import-batch.js'):require(n),
       __dirname:root,process:proc,console:{log(){},error(){}},URL,Buffer,
       Date:{now:()=>now},setTimeout:(fn,ms)=>{timers.push({fn,at:now+ms});return timers.length},
@@ -458,10 +466,12 @@ test('隐藏启动保留关页自动退出，刷新后新心跳会阻止退出',
     await request('/api/ping')
     await request('/api/bye')
     if(refreshed){now+=1000;await request('/api/ping')}
+    if(scenario.lateOpen)accountOpen=true
+    if(scenario.lateBackground)background=true
     now=4000
     const due=timers.filter(timer=>timer.at<=now)
     for(const timer of due)timer.fn()
-    assert.equal(exitCode,refreshed?null:0)
+    assert.equal(exitCode,refreshed||accountOpen||scenario.replyPending||background?null:0)
   }
 })
 

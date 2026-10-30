@@ -15,6 +15,10 @@ const { exec } = require('node:child_process')
 
 const collect = require('./collect.js')
 const { importBatch } = require('./import-batch.js')
+const accounts = require('./accounts.js').createAccounts()
+const replies = require('./replies.js').createReplyService({ collect, canSend: () => !job.running && !subReplyActive,
+  canCache: region => !accounts.status().platforms.some(row=>row.platform===(region.startsWith('os_')?'os':'cn')&&row.running) })
+const latest = require('./latest.js').createLatest({ collect })
 
 const ROOT = __dirname
 const APP_HTML = path.join(ROOT, 'app.html')
@@ -42,10 +46,11 @@ let byeAt = 0
 let shuttingDown = false
 
 function scheduleShutdown(reason) {
-  if (NO_AUTOCLOSE || byeTimer || shuttingDown) return
+  if (NO_AUTOCLOSE || byeTimer || shuttingDown || accounts.hasOpenWindows() || replies.hasPending() || replies.hasBackgroundChecks()) return
   byeAt = Date.now()
   byeTimer = setTimeout(() => {
     byeTimer = null
+    if (accounts.hasOpenWindows() || replies.hasPending() || replies.hasBackgroundChecks()) return
     // 判断「是不是刷新」只能看【bye 之后有没有新的 ping】。
     // 千万不要写成 `Date.now() - lastPing < 超时` —— 页面每 20 秒 ping 一次，
     // 关掉网页那一刻 lastPing 必然还在 90 秒内，那个条件永远成立，服务就永远不退出。
@@ -199,7 +204,7 @@ const server = http.createServer(async (req, res) => {
     return res.end(buf)
   }
 
-  if (req.method === 'GET' && (p === '/i18n.js' || p === '/onboarding.js' || p === '/batch-add.js' || p === '/note-store.js' || p === '/appearance.js')) {
+  if (req.method === 'GET' && (p === '/i18n.js' || p === '/onboarding.js' || p === '/batch-add.js' || p === '/note-store.js' || p === '/appearance.js' || p === '/accounts-panel.js' || p === '/reply-panel.js' || p === '/reply-i18n.js')) {
     const file = path.join(ROOT, p.slice(1))
     if (!fs.existsSync(file)) return json(res, 404, { error: 'i18n.js 缺失' })
     const buf = fs.readFileSync(file)
@@ -209,6 +214,32 @@ const server = http.createServer(async (req, res) => {
       'Cache-Control': 'no-store, must-revalidate',
     })
     return res.end(buf)
+  }
+
+  if (req.method === 'GET' && p === '/api/accounts') return json(res, 200, accounts.status())
+  if (req.method === 'GET' && p === '/api/replies/deletions') {
+    try{return json(res,200,replies.deletions())}catch{return json(res,500,{ok:false,code:'storage'})}
+  }
+  if (req.method === 'GET' && p === '/api/replies/latest') {
+    if(job.running||subReplyActive||replies.hasPending())return json(res,409,{ok:false,code:'busy'})
+    try{return json(res,200,latest.query({names:u.searchParams.getAll('name'),group:u.searchParams.has('group')?u.searchParams.get('group'):undefined,
+      kind:u.searchParams.get('kind')||undefined,limit:u.searchParams.has('limit')?u.searchParams.get('limit'):undefined,since:u.searchParams.get('since')||undefined,
+      updatesOnly:u.searchParams.get('updatesOnly')||undefined,cursor:u.searchParams.get('cursor')||undefined}))}
+    catch(error){return json(res,error.status||500,{ok:false,code:error.replyCode||'storage'})}
+  }
+  if (req.method === 'POST' && ['/api/replies/prepare','/api/replies/send','/api/replies/status','/api/replies/delete'].includes(p)) {
+    try {
+      const body = await readBody(req)
+      const method=p.endsWith('/delete')?'remove':p.split('/').at(-1),result = await replies[method](body)
+      const statusByCode={loginRequired:401,accountMismatch:401,noRole:403,notOwner:403,rejected:403,unknown:409,sending:409,changed:409,expired:409,busy:409,notFound:404,network:503,bridgeUnavailable:503,roleUnavailable:503,storage:500}
+      return json(res,result.ok?200:statusByCode[result.code]||400,result)
+    } catch (error) { return json(res,error.status || 500,{ok:false,code:error.replyCode || 'storage'}) }
+  }
+  if (req.method === 'POST' && p === '/api/accounts/open') {
+    const body = await readBody(req)
+    if(['cn','os'].includes(body.platform))replies.invalidate(body.platform)
+    const result = await accounts.open(body.platform)
+    return json(res, result.ok ? 200 : result.errorKey === 'accounts.invalid' ? 400 : 503, result)
   }
 
   if (req.method === 'GET' && p === '/api/games') {
@@ -221,7 +252,7 @@ const server = http.createServer(async (req, res) => {
     return json(res,200,await collect.refreshLevelTitles(body.names,language))
   }
   if (req.method === 'POST' && p === '/api/sub-replies') {
-    if (job.running) return json(res, 409, { ok: false, errorKey: 'error.syncBusy' })
+    if (job.running || replies.hasPending()) return json(res, 409, { ok: false, errorKey: 'error.syncBusy' })
     const body = await readBody(req)
     if (typeof body.name !== 'string' || !body.name || typeof body.replyId !== 'string' || !body.replyId) return json(res, 400, { ok: false, code: 'invalid' })
     subReplyActive++
@@ -230,7 +261,7 @@ const server = http.createServer(async (req, res) => {
     finally { subReplyActive-- }
   }
   if (req.method === 'POST' && p === '/api/mark-read') {
-    if (job.running || subReplyActive) return json(res, 409, { ok: false, errorKey: 'error.syncBusy' })
+    if (job.running || subReplyActive || replies.hasPending()) return json(res, 409, { ok: false, errorKey: 'error.syncBusy' })
     const body = await readBody(req)
     if (!Array.isArray(body.names) || !body.names.every(name => typeof name === 'string')) return json(res, 400, { ok: false, code: 'invalid' })
     return json(res, 200, collect.markRead(body.names))
@@ -334,13 +365,13 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && p === '/api/remove') {
-    if (job.running) return json(res, 409, { ok: false, errorKey: 'error.syncBusy', error: '同步进行中，请完成后再移除或删除。' })
+    if (job.running || replies.hasPending()) return json(res, 409, { ok: false, errorKey: 'error.syncBusy', error: '同步或回复发送进行中，请完成后再移除或删除。' })
     const b = await readBody(req)
     return json(res, 200, collect.removeGame(b.name, { deleteData: b.deleteData === true }))
   }
 
   if (req.method === 'POST' && p === '/api/remove-group') {
-    if (job.running) return json(res, 409, { ok: false, errorKey: 'error.syncBusy', error: '同步进行中，请完成后再移除或删除。' })
+    if (job.running || replies.hasPending()) return json(res, 409, { ok: false, errorKey: 'error.syncBusy', error: '同步或回复发送进行中，请完成后再移除或删除。' })
     const b = await readBody(req)
     return json(res, 200, collect.removeGroup(b.group, { deleteData: b.deleteData === true }))
   }
@@ -401,7 +432,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && p === '/api/sync') {
-    if (subReplyActive) return json(res, 409, { ok: false, errorKey: 'error.syncBusy' })
+    if (subReplyActive || replies.hasPending()) return json(res, 409, { ok: false, errorKey: 'error.syncBusy' })
     const b = await readBody(req)
     if(b.markerBaselines!==undefined&&(!b.markerBaselines||typeof b.markerBaselines!=='object'||Array.isArray(b.markerBaselines)
       ||Object.values(b.markerBaselines).some(value=>!value||['comments','subReplies','parents'].some(key=>!Array.isArray(value[key])||value[key].some(id=>typeof id!=='string')))))
@@ -411,6 +442,7 @@ const server = http.createServer(async (req, res) => {
       names: Array.isArray(b.names) && b.names.length ? b.names : null,
       full: !!b.full,
       markerBaselines:b.markerBaselines||{},
+      lang:b.lang,
     }))
   }
 

@@ -18,6 +18,17 @@ test('真实本地服务：导入、同步、便签、分组、异常输入及�
     for(const url of ['/','/i18n.js','/onboarding.js','/batch-add.js','/note-store.js','/appearance.js','/app.ico'])assert.equal((await fetch(base+url)).status,200,url)
     assert.equal((await call('/api/games')).data.games.length,0)
   })
+  await t.test('官方账号入口资源、平台校验及跨站请求防护，组件可用不代表角色全局授权',async()=>{
+    assert.equal((await fetch(base+'/accounts-panel.js')).status,200)
+    const status=(await call('/api/accounts')).data
+    assert.equal(status.roleVerified,false);assert.equal(status.replyEnabled,true);assert.equal(status.verification,'per-target')
+    assert.deepEqual(status.platforms.map(row=>row.platform),['cn','os'])
+    assert.doesNotMatch(JSON.stringify(status),/cookie|token|password|game_uid/)
+    for(const platform of ['','os_usa','cn & calc','https://evil.test'])assert.equal((await call('/api/accounts/open',{platform})).status,400)
+    assert.equal((await fetch(base+'/api/accounts/open',{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://evil.test'},body:'{"platform":"cn"}'})).status,403)
+    assert.equal((await fetch(base+'/api/accounts/open',{method:'POST',headers:{'Content-Type':'text/plain'},body:'{"platform":"cn"}'})).status,415)
+    assert.equal((await fetch(base+'/account-login/LoginWindow.cs')).status,404)
+  })
   await t.test('空输入、伪 ID、未知区服和不存在关卡不登记',async()=>{
     for(const input of ['','abc','?level_id=123456789oops'])assert.equal((await call('/api/add',{input,region:'os_asia'})).data.ok,false)
     assert.equal((await call('/api/level-detail?input=123456789&region=unknown')).data.code,'invalid')

@@ -41,5 +41,15 @@ global.fetch=async(raw,options={})=>{
   else throw Error('Unexpected fixture API')
   return new Response(JSON.stringify(result),{headers:{'Content-Type':'application/json'}})
 }
+// No UI/API test may use the real Windows account profiles or post to an official service.
+const bridgePath=require.resolve('./app/account-bridge.js');require(bridgePath)
+let sentReplies=0
+let deletePosts=0,verifyReads=0
+function auditDelete(){fs.writeFileSync(path.join(__dirname,'delete-audit.json'),JSON.stringify({deletePosts,verifyReads}))}
+require.cache[bridgePath].exports={createBridge:()=>({prepare:async region=>({ok:true,platform:region.startsWith('os_')?'os':'cn',region,account:{aid:'10001',name:'Fixture account'},roles:[{uid:'700000001',name:'Fixture character',region}]}),send:async(region,body)=>({ok:true,reply:{reply_id:'fixture-sent-'+(++sentReplies),parent_reply_id:body.parentReplyId,level_id:body.levelId,region,content:body.content,user_info:{uid:body.uid,nickname:'Fixture account'},created_at:Math.floor(Date.now()/1000),sub_replies:[]}}),remove:async()=>{deletePosts++;auditDelete();return fs.existsSync(path.join(__dirname,'uncertain-delete.flag'))?{ok:false,code:'unknown',acknowledged:true,verification:'readFailed'}:{ok:true,deleted:true,verified:true}},verifyDelete:async()=>{verifyReads++;auditDelete();const flag=path.join(__dirname,'delayed-delete.flag');if(fs.existsSync(flag)){const remaining=Number(fs.readFileSync(flag,'utf8'));if(remaining>0){fs.writeFileSync(flag,String(remaining-1));return{ok:true,present:true,verified:true}}}return{ok:true,deleted:true,verified:true}}})}
+const accountsPath=require.resolve('./app/accounts.js');require(accountsPath)
+const windows=new Set()
+require.cache[accountsPath].exports={createAccounts:()=>({hasOpenWindows:()=>false,status:()=>({ok:true,available:true,roleVerified:false,replyEnabled:true,verification:'per-target',capabilities:{replies:true,ownSubReplyDeletion:true,automaticRegion:true,latestQuery:true},platforms:['cn','os'].map(platform=>({platform,running:windows.has(platform)}))}),open:async platform=>{if(!['cn','os'].includes(platform))return{ok:false,errorKey:'accounts.invalid'};const alreadyOpen=windows.has(platform);windows.add(platform);return{ok:true,alreadyOpen,visible:true,foreground:true}}})}
 require('./app/server.js')
+
 

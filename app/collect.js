@@ -1919,6 +1919,61 @@ function markRead(names) {
   return { ok: true }
 }
 
+// Only merge an acknowledged official reply into its still-registered parent.
+function commitSentReply(source, reply) {
+  if(!reply||!reply.reply_id||typeof reply.content!=='string')return false
+  const entry=loadIndex().games.find(g=>g.name===source.name&&String(g.levelId)===source.levelId&&g.region===source.region)
+  if(!entry)return false
+  for(const [key,wanted]of [['level_id',source.levelId],['parent_reply_id',source.parentReplyId],['region',source.region]])
+    if(reply[key]!==undefined&&String(reply[key])!==wanted)return false
+  const file=gameFile(entry.name),data=JSON.parse(fs.readFileSync(file,'utf8').replace(/^\uFEFF/,''))
+  if(String(data.levelId)!==source.levelId||data.region!==source.region)return false
+  const parent=(data.replies||[]).find(row=>row.reply_id!=null&&String(row.reply_id)===source.parentReplyId)
+  if(!parent)return false
+  const before=flattenSubReplies(parent.sub_replies),exists=before.some(row=>String(row.reply_id)===String(reply.reply_id))
+  if(!exists)parent.sub_replies=[...(parent.sub_replies||[]),reply]
+  const count=flattenSubReplies(parent.sub_replies).length
+  parent.reply_stat={...(parent.reply_stat||{}),reply_count:String(Math.max((Number(parent.reply_stat?.reply_count)||0)+(exists?0:1),count))}
+  if(parent.subReplyFetch)parent.subReplyFetch={...parent.subReplyFetch,count,fetchedAt:new Date().toISOString()}
+  data.unread||={comments:[],subReplies:[],parents:[]}
+  if(!exists){data.unread.subReplies=[...new Set([...(data.unread.subReplies||[]),String(reply.reply_id)])];data.unread.parents=[...new Set([...(data.unread.parents||[]),source.parentReplyId])]}
+  writeJsonAtomic(file,data);persistNoteReplies(entry.name);return true
+}
+
+function commitDeletedReply(source) {
+  if(!source.subReplyId||!source.ownerUid)return false
+  const entry=loadIndex().games.find(g=>g.name===source.name&&String(g.levelId)===source.levelId&&g.region===source.region)
+  if(!entry)return false
+  const file=gameFile(entry.name),data=JSON.parse(fs.readFileSync(file,'utf8').replace(/^\uFEFF/,''))
+  if(String(data.levelId)!==source.levelId||data.region!==source.region)return false
+  const parent=(data.replies||[]).find(row=>row.reply_id!=null&&String(row.reply_id)===source.parentReplyId)
+  if(!parent)return false
+  const deleted=flattenSubReplies(parent.sub_replies).find(row=>String(row.reply_id)===source.subReplyId)
+  if(!deleted){persistNoteReplies(entry.name);return true}
+  if(String(deleted.user_info?.uid||'')!==source.ownerUid)return false
+  // Archive only the explicitly deleted message in existing notes; never remove personal notes.
+  const savedNotes=loadNotes(entry.name),stamp=new Date().toISOString()
+  let noteChanged=false
+  for(const note of savedNotes.notes||[]){
+    if(String(note.replyId||'')!==source.parentReplyId)continue
+    const history=Array.isArray(note.deletedSubReplies)?note.deletedSubReplies:[]
+    if(!history.some(row=>String(row.reply_id)===source.subReplyId)){
+      const {sub_replies,...snapshot}=deleted
+      note.deletedSubReplies=[...history,{...snapshot,deletedAt:stamp}];noteChanged=true
+    }
+  }
+  if(noteChanged)writeJsonAtomic(notesFile(entry.name),savedNotes)
+  const prune=rows=>(rows||[]).flatMap(row=>String(row.reply_id)===source.subReplyId?prune(row.sub_replies):[{...row,...(Array.isArray(row.sub_replies)?{sub_replies:prune(row.sub_replies)}:{})}])
+  parent.sub_replies=prune(parent.sub_replies)
+  const remaining=flattenSubReplies(parent.sub_replies)
+  parent.reply_stat={...(parent.reply_stat||{}),reply_count:String(Math.max(remaining.length,(Number(parent.reply_stat?.reply_count)||0)-1))}
+  if(parent.subReplyFetch)parent.subReplyFetch={...parent.subReplyFetch,count:remaining.length,fetchedAt:stamp}
+  data.unread||={comments:[],subReplies:[],parents:[]}
+  data.unread.subReplies=(data.unread.subReplies||[]).filter(id=>String(id)!==source.subReplyId)
+  if(!remaining.some(row=>data.unread.subReplies.includes(String(row.reply_id))))data.unread.parents=(data.unread.parents||[]).filter(id=>String(id)!==source.parentReplyId)
+  writeJsonAtomic(file,data);persistNoteReplies(entry.name);return true
+}
+
 module.exports = {
   ROOT, DATA_DIR,
   loadIndex, saveIndex, gameDir, gameFile, notesFile,
@@ -1939,7 +1994,7 @@ module.exports = {
   // 判死列表：导出来方便自检/测试（系统代理挂了要能轮到 proxy.txt 和扫端口）
   markProxyDead, isProxyDead,
   invalidateProxyCache,
-  requestText, jsonValidator, fetchPage, fetchSubReplies, downloadSubReplies, flattenSubReplies, markRead,
+  requestText, jsonValidator, fetchPage, fetchSubReplies, downloadSubReplies, flattenSubReplies, markRead, commitSentReply, commitDeletedReply, writeJsonAtomic,
   worthOtherRoute, isRegionBlock,
 }
 

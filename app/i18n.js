@@ -6845,6 +6845,182 @@
   for(const [lang,text]of Object.entries(markerRestartLabels))QX_I18N[lang]["new.restartRequired"]=text
   const titleFailureLabels={"zh-cn":"对应语言的关卡标题未能获取，暂用原标题。","zh-tw":"未能取得對應語言的關卡標題，暫用原標題。","en-us":"Could not retrieve the localized stage title; keeping the original title.","ja-jp":"対応する言語のステージ名を取得できないため、元の名前を表示します。","ko-kr":"해당 언어의 스테이지 제목을 가져오지 못해 원래 제목을 표시합니다.","es-es":"No se pudo obtener el título localizado; se mantiene el original.","fr-fr":"Impossible de récupérer le titre localisé ; le titre d’origine est conservé.","ru-ru":"Не удалось получить название на выбранном языке; сохранено исходное название.","th-th":"ไม่สามารถดึงชื่อด่านในภาษาที่เลือก จึงแสดงชื่อเดิม","vi-vn":"Không lấy được tên màn theo ngôn ngữ đã chọn; giữ tên gốc.","de-de":"Der übersetzte Stufentitel konnte nicht geladen werden; der Originaltitel bleibt erhalten.","id-id":"Judul tahap dalam bahasa pilihan tidak dapat diambil; judul asli tetap digunakan.","pt-pt":"Não foi possível obter o título localizado; mantém-se o título original.","tr-tr":"Seçilen dilde bölüm başlığı alınamadı; özgün başlık korunuyor.","it-it":"Impossibile recuperare il titolo localizzato; viene mantenuto quello originale."}
   for(const [lang,text]of Object.entries(titleFailureLabels))QX_I18N[lang]['title.failed']=text
+  const accountKeys='title|hint|cn|os|pending|opening|opened|already|unavailable|failed|invalid'.split('|')
+  const accountText={
+  "zh-cn": "官方账号|登录由官方窗口处理，国服和外服的登录状态独立保存。|米游社 · 国服登录|HoYoLAB · 国际服登录|点击评论或子回复旁的回复按钮，自动匹配其区服角色。|正在打开官方登录窗口…|已请求打开官方窗口，请在窗口里完成登录。|该平台的登录窗口已经打开。|登录组件不可用，请检查 Windows、WebView2 和程序文件。|无法打开官方登录窗口，请重试。|不支持此登录平台。",
+  "zh-tw": "官方帳號|登入由官方視窗處理，國服與海外服的登入狀態分別儲存。|米遊社 · 國服登入|HoYoLAB · 海外服登入|點擊評論或子回覆旁的回覆按鈕，自動比對其區服角色。|正在開啟官方登入視窗…|已要求開啟官方視窗，請在視窗中完成登入。|此平台的登入視窗已開啟。|登入元件無法使用，請檢查 Windows、WebView2 與程式檔案。|無法開啟官方登入視窗，請重試。|不支援此登入平台。",
+  "en-us": "Official accounts|Sign in through the official window. China and global sessions are saved separately.|Miyoushe · China sign-in|HoYoLAB · Global sign-in|Click Reply beside a comment or reply to match its server character automatically.|Opening the official sign-in window…|The official window was requested. Complete sign-in there.|The sign-in window for this platform is already open.|Sign-in components are unavailable. Check Windows, WebView2 and the program files.|Could not open the official sign-in window. Please retry.|Unsupported sign-in platform.",
+  "ja-jp": "公式アカウント|公式ウィンドウでログインします。中国版とグローバル版の状態は別々に保存されます。|米遊社 · 中国版ログイン|HoYoLAB · グローバル版ログイン|コメントや返信の横の返信ボタンから、対象サーバーのキャラクターを自動選択します。|公式ログインウィンドウを開いています…|公式ウィンドウの起動を要求しました。その画面でログインしてください。|このプラットフォームのログインウィンドウはすでに開いています。|ログインコンポーネントを利用できません。Windows、WebView2、プログラムファイルを確認してください。|公式ログインウィンドウを開けませんでした。再試行してください。|未対応のログインプラットフォームです。",
+  "ko-kr": "공식 계정|공식 창에서 로그인합니다. 중국 서버와 글로벌 서버의 로그인 상태는 별도로 저장됩니다.|미유사 · 중국 서버 로그인|HoYoLAB · 글로벌 서버 로그인|댓글 또는 답글 옆의 답글 버튼을 누르면 해당 서버 캐릭터가 자동 선택됩니다.|공식 로그인 창을 여는 중…|공식 창 열기를 요청했습니다. 해당 창에서 로그인하세요.|이 플랫폼의 로그인 창이 이미 열려 있습니다.|로그인 구성 요소를 사용할 수 없습니다. Windows, WebView2 및 프로그램 파일을 확인하세요.|공식 로그인 창을 열지 못했습니다. 다시 시도하세요.|지원하지 않는 로그인 플랫폼입니다.",
+  "es-es": "Cuentas oficiales|Inicia sesión en la ventana oficial. Las sesiones de China y globales se guardan por separado.|Miyoushe · Acceso de China|HoYoLAB · Acceso global|Pulsa Responder junto a un comentario o respuesta para seleccionar automáticamente su servidor.|Abriendo la ventana oficial…|Se ha solicitado abrir la ventana oficial. Inicia sesión allí.|La ventana de acceso de esta plataforma ya está abierta.|Los componentes de acceso no están disponibles. Revisa Windows, WebView2 y los archivos del programa.|No se pudo abrir la ventana oficial. Inténtalo de nuevo.|Plataforma de acceso no compatible.",
+  "fr-fr": "Comptes officiels|Connectez-vous dans la fenêtre officielle. Les sessions chinoises et internationales sont enregistrées séparément.|Miyoushe · Connexion Chine|HoYoLAB · Connexion internationale|Cliquez sur Répondre à côté d’un commentaire ou d’une réponse pour sélectionner automatiquement son serveur.|Ouverture de la fenêtre officielle…|L’ouverture de la fenêtre officielle a été demandée. Connectez-vous dans celle-ci.|La fenêtre de connexion de cette plateforme est déjà ouverte.|Les composants de connexion sont indisponibles. Vérifiez Windows, WebView2 et les fichiers du programme.|Impossible d’ouvrir la fenêtre officielle. Réessayez.|Plateforme de connexion non prise en charge.",
+  "ru-ru": "Официальные аккаунты|Вход выполняется в официальном окне. Сессии Китая и международных серверов сохраняются отдельно.|Miyoushe · Вход для Китая|HoYoLAB · Международный вход|Нажмите Ответить возле комментария или ответа, чтобы автоматически выбрать персонажа нужного сервера.|Открывается официальное окно входа…|Запрошено открытие официального окна. Выполните вход в нём.|Окно входа для этой платформы уже открыто.|Компоненты входа недоступны. Проверьте Windows, WebView2 и файлы программы.|Не удалось открыть официальное окно. Повторите попытку.|Неподдерживаемая платформа входа.",
+  "th-th": "บัญชีทางการ|เข้าสู่ระบบในหน้าต่างทางการ โดยบันทึกสถานะของเซิร์ฟเวอร์จีนและเซิร์ฟเวอร์ทั่วโลกแยกกัน|Miyoushe · เข้าสู่ระบบเซิร์ฟเวอร์จีน|HoYoLAB · เข้าสู่ระบบเซิร์ฟเวอร์ทั่วโลก|กดตอบกลับข้างความคิดเห็นหรือคำตอบเพื่อเลือกตัวละครของเซิร์ฟเวอร์นั้นอัตโนมัติ|กำลังเปิดหน้าต่างเข้าสู่ระบบทางการ…|ส่งคำขอเปิดหน้าต่างทางการแล้ว โปรดเข้าสู่ระบบในหน้าต่างนั้น|หน้าต่างเข้าสู่ระบบของแพลตฟอร์มนี้เปิดอยู่แล้ว|ไม่พบส่วนประกอบเข้าสู่ระบบ โปรดตรวจสอบ Windows, WebView2 และไฟล์โปรแกรม|เปิดหน้าต่างทางการไม่ได้ โปรดลองอีกครั้ง|ไม่รองรับแพลตฟอร์มเข้าสู่ระบบนี้",
+  "vi-vn": "Tài khoản chính thức|Đăng nhập trong cửa sổ chính thức. Phiên máy chủ Trung Quốc và quốc tế được lưu riêng.|Miyoushe · Đăng nhập Trung Quốc|HoYoLAB · Đăng nhập quốc tế|Nhấn Trả lời cạnh bình luận hoặc câu trả lời để tự chọn nhân vật đúng máy chủ.|Đang mở cửa sổ đăng nhập chính thức…|Đã yêu cầu mở cửa sổ chính thức. Hãy đăng nhập tại đó.|Cửa sổ đăng nhập của nền tảng này đã mở.|Không có thành phần đăng nhập. Hãy kiểm tra Windows, WebView2 và các tệp chương trình.|Không mở được cửa sổ chính thức. Hãy thử lại.|Không hỗ trợ nền tảng đăng nhập này.",
+  "de-de": "Offizielle Konten|Die Anmeldung erfolgt im offiziellen Fenster. Sitzungen für China und globale Server werden getrennt gespeichert.|Miyoushe · Anmeldung China|HoYoLAB · Globale Anmeldung|Klicke neben einem Kommentar oder einer Antwort auf Antworten, um die passende Serverfigur automatisch zu wählen.|Offizielles Anmeldefenster wird geöffnet…|Das offizielle Fenster wurde angefordert. Melde dich dort an.|Das Anmeldefenster dieser Plattform ist bereits geöffnet.|Anmeldekomponenten fehlen. Prüfe Windows, WebView2 und die Programmdateien.|Das offizielle Fenster konnte nicht geöffnet werden. Bitte erneut versuchen.|Nicht unterstützte Anmeldeplattform.",
+  "id-id": "Akun resmi|Masuk melalui jendela resmi. Sesi server Tiongkok dan global disimpan terpisah.|Miyoushe · Masuk server Tiongkok|HoYoLAB · Masuk server global|Klik Balas di samping komentar atau balasan untuk memilih karakter servernya secara otomatis.|Membuka jendela masuk resmi…|Jendela resmi telah diminta. Selesaikan proses masuk di sana.|Jendela masuk untuk platform ini sudah terbuka.|Komponen masuk tidak tersedia. Periksa Windows, WebView2, dan berkas program.|Tidak dapat membuka jendela resmi. Coba lagi.|Platform masuk tidak didukung.",
+  "pt-pt": "Contas oficiais|Inicia sessão na janela oficial. As sessões da China e globais são guardadas separadamente.|Miyoushe · Sessão da China|HoYoLAB · Sessão global|Clica em Responder junto de um comentário ou resposta para escolher automaticamente a personagem do respetivo servidor.|A abrir a janela oficial…|Foi pedida a abertura da janela oficial. Inicia sessão nessa janela.|A janela de início de sessão desta plataforma já está aberta.|Os componentes de início de sessão não estão disponíveis. Verifica o Windows, o WebView2 e os ficheiros do programa.|Não foi possível abrir a janela oficial. Tenta novamente.|Plataforma de início de sessão não suportada.",
+  "tr-tr": "Resmî hesaplar|Resmî pencerede oturum açın. Çin ve küresel sunucu oturumları ayrı kaydedilir.|Miyoushe · Çin sunucusu girişi|HoYoLAB · Küresel sunucu girişi|Yorum ya da yanıtın yanındaki Yanıtla düğmesi, ilgili sunucu karakterini otomatik seçer.|Resmî giriş penceresi açılıyor…|Resmî pencerenin açılması istendi. Girişi orada tamamlayın.|Bu platformun giriş penceresi zaten açık.|Giriş bileşenleri kullanılamıyor. Windows, WebView2 ve program dosyalarını kontrol edin.|Resmî pencere açılamadı. Tekrar deneyin.|Desteklenmeyen giriş platformu.",
+  "it-it": "Account ufficiali|Accedi nella finestra ufficiale. Le sessioni cinesi e globali vengono salvate separatamente.|Miyoushe · Accesso Cina|HoYoLAB · Accesso globale|Premi Rispondi accanto a un commento o risposta per scegliere automaticamente il personaggio del server.|Apertura della finestra ufficiale…|È stata richiesta la finestra ufficiale. Completa lì l’accesso.|La finestra di accesso di questa piattaforma è già aperta.|Componenti di accesso non disponibili. Controlla Windows, WebView2 e i file del programma.|Impossibile aprire la finestra ufficiale. Riprova.|Piattaforma di accesso non supportata."
+}
+  for(const [lang,text]of Object.entries(accountText))accountKeys.forEach((key,index)=>{QX_I18N[lang]['accounts.'+key]=text.split('|')[index]})
+  QX_TARGETS.push(['#accountsTitle','accounts.title'],['#accountsHint','accounts.hint','text'],['#account-cn','accounts.cn'],['#account-os','accounts.os'])
+  const accountTutorial={
+  "zh-cn": [
+    "登录验证与回复权限（可跳过）",
+    "已定位本关对应平台的登录入口。仅查看和收集评论不需要登录；回复或删除自己的子回复时，需要先在官方窗口登录。国服用米游社，外服用 HoYoLAB；登录后回到评论页点“回复”，会自动核验账号和本区服角色。看不到账号入口可选“适应窗口”。只能删除本人在本区服发布的子回复，不能删除其他玩家的内容。密码、验证码只在官方页面输入；本步骤不会自动发言或删除，也可直接下一步。",
+    "已请求打开对应官方登录窗口；这不代表登录或角色验证已经成功。完成后回评论页点“回复”核验。"
+  ],
+  "zh-tw": [
+    "登入驗證與回覆權限（可略過）",
+    "僅查看、收集評論不需登入。回覆或刪除本人子回覆前，請在官方視窗登入：國服用米遊社，外服用 HoYoLAB。返回評論頁點「回覆」會確認帳號與本服角色。入口被裁切時選「適應視窗」。只能刪除本人在本服的子回覆。密碼、驗證碼只在官方頁面輸入。本步不會自動發言或刪除，可直接下一步。",
+    "已請求開啟官方登入視窗，不代表登入或角色驗證已成功。完成後返回評論頁點「回覆」確認。"
+  ],
+  "en-us": [
+    "Sign-in and reply permissions (optional)",
+    "Reading and collecting comments needs no login. To reply or delete your own reply, sign in in the official window: Miyoushe for China, HoYoLAB for global servers. Back in Comments, Reply verifies the account and target-server character. Use Fit window if the account entry is clipped. Only your own replies on that server can be deleted. Enter passwords or codes only on the official page. This step never posts or deletes; you can continue without signing in.",
+    "Requested the official login window. This does not confirm login or character verification. Return to Comments and click Reply to verify."
+  ],
+  "ja-jp": [
+    "ログインと返信権限（任意）",
+    "閲覧・収集にログインは不要です。返信や自分の返信の削除には公式ウィンドウでログインします。中国版は米遊社、海外版は HoYoLAB です。コメント画面の返信で対象サーバーのキャラクターを確認します。入口が隠れる場合はウィンドウに合わせる設定を使ってください。削除はこのサーバーの本人返信のみ可能です。パスワードやコードは公式ページだけに入力します。この手順は投稿・削除せず、スキップできます。",
+    "公式ログイン画面を開くよう要求しました。ログインやキャラクター確認の成功を意味しません。コメントの返信から確認してください。"
+  ],
+  "ko-kr": [
+    "로그인 및 답글 권한 (선택)",
+    "조회와 수집에는 로그인이 필요 없습니다. 답글 작성이나 본인 답글 삭제는 공식 창에서 로그인하세요. 중국 서버는 Miyoushe, 해외 서버는 HoYoLAB입니다. 댓글 화면의 답글을 누르면 계정과 해당 서버 캐릭터를 확인합니다. 입구가 잘리면 창에 맞춤을 사용하세요. 해당 서버의 본인 답글만 삭제할 수 있습니다. 암호와 코드는 공식 페이지에만 입력하세요. 이 단계는 자동 작성·삭제하지 않으며 건너뛸 수 있습니다.",
+    "공식 로그인 창 열기를 요청했습니다. 로그인이나 캐릭터 확인 성공을 뜻하지 않습니다. 댓글의 답글에서 확인하세요."
+  ],
+  "es-es": [
+    "Acceso y permisos de respuesta (opcional)",
+    "Leer y recopilar no requiere acceso. Para responder o borrar tu respuesta, entra en la ventana oficial: Miyoushe para China, HoYoLAB para global. Responder comprueba la cuenta y el personaje del servidor. Usa Ajustar a ventana si no ves el acceso. Solo se borran tus respuestas de ese servidor. Contraseñas y códigos solo en la página oficial. Este paso no publica ni borra y se puede omitir.",
+    "Se solicitó la ventana oficial; no confirma el acceso ni el personaje. Vuelve a Comentarios y pulsa Responder para verificar."
+  ],
+  "fr-fr": [
+    "Connexion et droits de réponse (facultatif)",
+    "Lire et collecter ne nécessite pas de connexion. Pour répondre ou supprimer votre réponse, connectez-vous dans la fenêtre officielle : Miyoushe pour la Chine, HoYoLAB pour l’international. Répondre vérifie le compte et le personnage du serveur. Adaptez le zoom si l’entrée est masquée. Seules vos réponses de ce serveur sont supprimables. Saisissez mots de passe et codes sur le site officiel uniquement. Cette étape ne publie ni ne supprime et peut être ignorée.",
+    "Ouverture de la fenêtre officielle demandée, sans confirmation de connexion ni de personnage. Revenez aux commentaires et cliquez sur Répondre."
+  ],
+  "ru-ru": [
+    "Вход и права ответа (необязательно)",
+    "Для чтения и сбора вход не нужен. Для ответа или удаления своего ответа войдите в официальном окне: Miyoushe для Китая, HoYoLAB для других серверов. Кнопка Ответить проверяет аккаунт и персонажа нужного сервера. Если вход обрезан, выберите подгонку окна. Удаляются только собственные ответы этого сервера. Пароли и коды вводите только на официальной странице. Этот шаг ничего не публикует и не удаляет; его можно пропустить.",
+    "Запрошено официальное окно входа. Это не подтверждает вход или персонажа. Вернитесь к комментариям и нажмите Ответить для проверки."
+  ],
+  "th-th": [
+    "เข้าสู่ระบบและสิทธิ์ตอบกลับ (ข้ามได้)",
+    "อ่านและรวบรวมไม่ต้องเข้าสู่ระบบ หากจะตอบหรือลบคำตอบของตน ให้เข้าสู่ระบบในหน้าต่างทางการ: Miyoushe สำหรับจีน และ HoYoLAB สำหรับทั่วโลก กดตอบกลับเพื่อตรวจบัญชีและตัวละครเซิร์ฟเวอร์ ใช้ปรับพอดีหน้าต่างหากไม่เห็นทางเข้า ลบได้เฉพาะคำตอบตนในเซิร์ฟเวอร์นั้น รหัสผ่านและรหัสยืนยันกรอกเฉพาะหน้าทางการ ขั้นนี้ไม่โพสต์หรือลบอัตโนมัติ และข้ามได้",
+    "ขอเปิดหน้าต่างทางการแล้ว ไม่ได้ยืนยันว่าเข้าสู่ระบบหรือยืนยันตัวละครสำเร็จ กลับไปกดตอบกลับเพื่อตรวจสอบ"
+  ],
+  "vi-vn": [
+    "Đăng nhập và quyền trả lời (tùy chọn)",
+    "Đọc và thu thập không cần đăng nhập. Để trả lời hoặc xóa trả lời của mình, đăng nhập trong cửa sổ chính thức: Miyoushe cho Trung Quốc, HoYoLAB cho quốc tế. Nút Trả lời xác minh tài khoản và nhân vật đúng máy chủ. Dùng vừa cửa sổ nếu lối vào bị khuất. Chỉ xóa trả lời của mình ở máy chủ đó. Chỉ nhập mật khẩu và mã trên trang chính thức. Bước này không tự đăng hay xóa, có thể bỏ qua.",
+    "Đã yêu cầu mở cửa sổ chính thức; chưa xác nhận đăng nhập hay nhân vật. Quay lại bình luận và bấm Trả lời để xác minh."
+  ],
+  "de-de": [
+    "Anmeldung und Antwortrechte (optional)",
+    "Lesen und Sammeln benötigt keine Anmeldung. Für Antworten oder das Löschen eigener Antworten im offiziellen Fenster anmelden: Miyoushe für China, HoYoLAB für global. Antworten prüft Konto und Zielserverfigur. Bei verdecktem Zugang die Fensteranpassung nutzen. Nur eigene Antworten dieses Servers sind löschbar. Passwörter und Codes nur auf der offiziellen Seite eingeben. Dieser Schritt postet und löscht nichts und kann übersprungen werden.",
+    "Offizielles Anmeldefenster angefordert; dies bestätigt weder Anmeldung noch Figur. Zurück zu Kommentaren und mit Antworten prüfen."
+  ],
+  "id-id": [
+    "Masuk dan izin balasan (opsional)",
+    "Membaca dan mengumpulkan tidak perlu masuk. Untuk membalas atau menghapus balasan sendiri, masuk di jendela resmi: Miyoushe untuk China, HoYoLAB untuk global. Balas memverifikasi akun dan karakter server tujuan. Gunakan Sesuaikan jendela jika pintu masuk terpotong. Hanya balasan sendiri di server itu yang bisa dihapus. Masukkan sandi dan kode hanya di halaman resmi. Langkah ini tidak memposting atau menghapus otomatis dan dapat dilewati.",
+    "Jendela resmi diminta dibuka; belum berarti akun atau karakter terverifikasi. Kembali ke komentar lalu klik Balas untuk memeriksa."
+  ],
+  "pt-pt": [
+    "Sessão e permissões de resposta (opcional)",
+    "Ler e recolher não exige sessão. Para responder ou eliminar respostas próprias, entra na janela oficial: Miyoushe para China, HoYoLAB para global. Responder verifica a conta e personagem do servidor. Usa ajustar à janela se o acesso estiver cortado. Só podes eliminar respostas próprias desse servidor. Introduz palavras-passe e códigos apenas na página oficial. Este passo não publica nem elimina e pode ser ignorado.",
+    "Foi pedida a janela oficial; isto não confirma a sessão nem a personagem. Regressa aos comentários e clica em Responder para verificar."
+  ],
+  "tr-tr": [
+    "Giriş ve yanıt izinleri (isteğe bağlı)",
+    "Okuma ve toplama için giriş gerekmez. Yanıtlamak veya kendi yanıtınızı silmek için resmî pencerede giriş yapın: Çin için Miyoushe, küresel sunucular için HoYoLAB. Yanıtla hesabı ve hedef sunucu karakterini doğrular. Giriş kırpılıyorsa pencereye sığdırmayı seçin. Yalnız o sunucudaki kendi yanıtlarınız silinebilir. Parola ve kodları yalnız resmî sayfaya girin. Bu adım otomatik yazmaz veya silmez; atlanabilir.",
+    "Resmî pencerenin açılması istendi; giriş veya karakter doğrulaması onaylanmadı. Yorumlara dönüp Yanıtla ile kontrol edin."
+  ],
+  "it-it": [
+    "Accesso e permessi di risposta (facoltativo)",
+    "Leggere e raccogliere non richiede accesso. Per rispondere o eliminare risposte proprie, accedi nella finestra ufficiale: Miyoushe per la Cina, HoYoLAB per globale. Rispondi verifica account e personaggio del server. Adatta alla finestra se l’accesso è tagliato. Puoi eliminare solo risposte tue di quel server. Inserisci password e codici solo sul sito ufficiale. Questo passo non pubblica né elimina e si può saltare.",
+    "Richiesta la finestra ufficiale; non conferma accesso o personaggio. Torna ai commenti e premi Rispondi per verificare."
+  ]
+}
+  for(const[lang,row]of Object.entries(accountTutorial))['accountTitle','accountBody','accountOpened'].forEach((key,i)=>{QX_I18N[lang]['onboard.'+key]=row[i]})
+  const loginWindowText={
+  "zh-cn": [
+    "官方登录窗口已显示，请在其中完成登录。窗口显示不代表角色已验证。",
+    "已恢复并调出该平台的登录窗口，请在窗口中继续操作。",
+    "登录窗口已恢复显示，但 Windows 未允许自动切换焦点。请点击任务栏中的官方登录窗口继续；这不代表登录验证成功。"
+  ],
+  "zh-tw": [
+    "官方登入視窗已顯示，請在其中完成登入。視窗顯示不代表角色已驗證。",
+    "已還原並叫出此平台的登入視窗，請繼續操作。",
+    "登入視窗已還原顯示，但 Windows 未允許自動切換焦點。請點工作列中的官方視窗繼續；這不代表登入驗證成功。"
+  ],
+  "en-us": [
+    "The official login window is visible. Sign in there; window visibility does not verify a character.",
+    "The existing login window has been restored and brought forward. Continue there.",
+    "The login window is visible, but Windows did not allow automatic focus. Select the official window from the taskbar to continue. This does not confirm sign-in."
+  ],
+  "ja-jp": [
+    "公式ログイン画面を表示しました。そこでログインしてください。表示だけではキャラクター確認は完了しません。",
+    "既存のログイン画面を復元して前面に移動しました。そちらで続行してください。",
+    "画面は復元されましたが、Windows が自動フォーカスを許可しませんでした。タスクバーから公式画面を選んでください。ログイン確認完了を意味しません。"
+  ],
+  "ko-kr": [
+    "공식 로그인 창이 표시되었습니다. 해당 창에서 로그인하세요. 창 표시만으로 캐릭터가 인증되지는 않습니다.",
+    "기존 로그인 창을 복원해 앞으로 가져왔습니다. 해당 창에서 계속하세요.",
+    "로그인 창은 표시되었지만 Windows가 자동 포커스를 허용하지 않았습니다. 작업 표시줄에서 공식 창을 선택하세요. 로그인 인증 성공을 뜻하지 않습니다."
+  ],
+  "es-es": [
+    "La ventana oficial está visible. Inicia sesión allí; esto no verifica al personaje.",
+    "Se ha restaurado y traído al frente la ventana existente. Continúa allí.",
+    "La ventana está visible, pero Windows no permitió darle el foco. Selecciónala en la barra de tareas. Esto no confirma el acceso."
+  ],
+  "fr-fr": [
+    "La fenêtre officielle est visible. Connectez-vous dedans ; cela ne vérifie pas le personnage.",
+    "La fenêtre existante a été restaurée et placée devant. Continuez dedans.",
+    "La fenêtre est visible, mais Windows a refusé le focus automatique. Sélectionnez-la dans la barre des tâches. Cela ne confirme pas la connexion."
+  ],
+  "ru-ru": [
+    "Официальное окно входа показано. Войдите в нём; показ окна не подтверждает персонажа.",
+    "Существующее окно входа восстановлено и выведено вперёд. Продолжайте в нём.",
+    "Окно видно, но Windows не разрешила автоматический фокус. Выберите официальное окно на панели задач. Это не подтверждает вход."
+  ],
+  "th-th": [
+    "หน้าต่างเข้าสู่ระบบทางการแสดงแล้ว โปรดเข้าสู่ระบบที่นั่น การแสดงหน้าต่างไม่ได้ยืนยันตัวละคร",
+    "กู้คืนและนำหน้าต่างเข้าสู่ระบบเดิมขึ้นด้านหน้าแล้ว โปรดดำเนินการต่อในหน้าต่างนั้น",
+    "หน้าต่างแสดงแล้ว แต่ Windows ไม่อนุญาตให้สลับโฟกัสอัตโนมัติ โปรดเลือกหน้าต่างทางการที่แถบงาน ไม่ได้ยืนยันว่าเข้าสู่ระบบสำเร็จ"
+  ],
+  "vi-vn": [
+    "Cửa sổ đăng nhập chính thức đã hiển thị. Hãy đăng nhập ở đó; việc mở cửa sổ không xác minh nhân vật.",
+    "Đã khôi phục và đưa cửa sổ đăng nhập hiện có ra trước. Tiếp tục ở đó.",
+    "Cửa sổ đã hiển thị nhưng Windows không cho tự chuyển tiêu điểm. Chọn cửa sổ chính thức trên thanh tác vụ. Chưa xác nhận đăng nhập."
+  ],
+  "de-de": [
+    "Das offizielle Anmeldefenster ist sichtbar. Melde dich dort an; die Figur ist dadurch noch nicht bestätigt.",
+    "Das vorhandene Anmeldefenster wurde wiederhergestellt und nach vorne geholt. Fahre dort fort.",
+    "Das Fenster ist sichtbar, aber Windows hat den automatischen Fokus verweigert. Wähle es in der Taskleiste. Dies bestätigt keine Anmeldung."
+  ],
+  "id-id": [
+    "Jendela masuk resmi sudah terlihat. Masuk di sana; tampilnya jendela tidak memverifikasi karakter.",
+    "Jendela masuk yang ada sudah dipulihkan dan dibawa ke depan. Lanjutkan di sana.",
+    "Jendela sudah terlihat, tetapi Windows menolak fokus otomatis. Pilih jendela resmi di bilah tugas. Ini belum mengonfirmasi masuk."
+  ],
+  "pt-pt": [
+    "A janela oficial está visível. Entra nela; mostrar a janela não verifica a personagem.",
+    "A janela existente foi restaurada e trazida para a frente. Continua nela.",
+    "A janela está visível, mas o Windows não permitiu o foco automático. Seleciona-a na barra de tarefas. Isto não confirma a sessão."
+  ],
+  "tr-tr": [
+    "Resmî giriş penceresi görünür durumda. Orada giriş yapın; pencerenin görünmesi karakteri doğrulamaz.",
+    "Mevcut giriş penceresi geri yüklendi ve öne getirildi. Orada devam edin.",
+    "Pencere görünür, ancak Windows otomatik odağa izin vermedi. Görev çubuğundan resmî pencereyi seçin. Bu girişin doğrulandığı anlamına gelmez."
+  ],
+  "it-it": [
+    "La finestra ufficiale è visibile. Accedi lì; mostrarla non verifica il personaggio.",
+    "La finestra esistente è stata ripristinata e portata davanti. Continua lì.",
+    "La finestra è visibile ma Windows non ha consentito il focus automatico. Selezionala nella barra delle applicazioni. Questo non conferma l’accesso."
+  ]
+}
+  for(const[lang,row]of Object.entries(loginWindowText))['opened','already','attention'].forEach((key,i)=>{QX_I18N[lang]['accounts.'+key]=row[i]})
   window.QX_LANGS = QX_LANGS
   window.QX_I18N = QX_I18N
   window.QX_TARGETS = QX_TARGETS

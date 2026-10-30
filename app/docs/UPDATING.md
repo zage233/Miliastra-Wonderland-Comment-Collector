@@ -38,3 +38,10 @@ Extract the entire new delivery into a separate, non-nested directory. Close the
 The transfer validates the clean delivery and legacy/v1 storage, stages and hashes every configuration/data file, checks for concurrent writes and replaces only the new empty data directories. The old installation is unchanged and can be retained for rollback. Incompatible/corrupt formats, a used destination, links or active services stop the transfer. It preserves bytes rather than pretending to convert arbitrary future formats. Format changes require a dedicated, validated migration.
 
 Browser tutorial/theme preferences are separate. After transferring, the new folder contains personal data and must not be uploaded as-is; generate a separate clean distribution. Use one installation going forward: the two copies do not synchronize with one another.
+
+## 官方登录窗口
+
+官方登录窗口的 cn/os 浏览器会话位于当前用户的 LOCALAPPDATA 中，独立于 `config/` 和 `data/`；更换收集器目录不会主动清除这些会话，目录名继续沿用 `MiliastraCommentCollector/LoginProbe`。不要将浏览器会话目录随工具分享。程序回退前应关闭收集器服务及官方登录窗口；回退程序不等于退出官方网站账号。
+
+
+本地回复新增 config/reply-attempts.json，保存发送／删除尝试及回执，防止重启后重发。升级时随完整 config/ 保留，迁入工具按原始字节复制；不要删除它，也不要上传个人配置。新字段兼容现有评论／便签 v1 格式，删除历史为可选 deletedSubReplies。不支持的格式或损坏文件会停止相关操作，不会抹成空配置。

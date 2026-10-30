@@ -5,6 +5,36 @@ const fs = require('node:fs')
 const path = require('node:path')
 const vm = require('node:vm')
 const source = fs.readFileSync(path.join(__dirname, '..', 'onboarding.js'), 'utf8')
+
+test('登录教程按导入关卡区服选择平台，只由点击打开，不把开窗称为验证成功',()=>{
+  for(const region of ['cn_gf01','cn_qd01','os_asia','os_euro','os_usa','os_cht']){
+    const calls=[],nodes={onboardRegion:{value:'cn_gf01'},onboardAccountOpen:{},'account-cn':{click:()=>calls.push('cn')},'account-os':{click:()=>calls.push('os')}}
+    const c={active:true,busy:false,step:5,state:{games:[{name:'Imported',region}]},importedName:'Imported',$o:id=>nodes[id],message:text=>calls.push(text),t:key=>key};vm.createContext(c)
+    const start=source.indexOf('  function accountPlatform()');vm.runInContext(source.slice(start,source.indexOf('  async function importFirst()',start)),c)
+    assert.deepEqual(calls,[]);nodes.onboardAccountOpen.onclick();assert.deepEqual(calls,[region.startsWith('cn_')?'cn':'os','onboard.accountOpened'])
+    c.step=6;nodes.onboardAccountOpen.onclick();assert.equal(calls.length,2);c.step=5;c.busy=true;nodes.onboardAccountOpen.onclick();assert.equal(calls.length,2)
+  }
+})
+
+test('登录教学可跳过，不要求公开回复或删除；最终翻译提示保留在第七步',async()=>{
+  const phases=[],nodes={onboardCoachNext:{}},c={$o:id=>nodes[id],active:true,busy:false,step:5,showCoach:step=>phases.push(step),finish:done=>phases.push(done)};vm.createContext(c)
+  const start=source.indexOf("  $o('onboardCoachNext').onclick=");vm.runInContext(source.slice(start,source.indexOf("  document.addEventListener('click'",start)),c)
+  await nodes.onboardCoachNext.onclick();assert.deepEqual(phases,[6]);c.step=6;await nodes.onboardCoachNext.onclick();assert.deepEqual(phases,[6,true])
+  assert.match(source,/onboardTranslationTip'\)\.hidden=step!==6/);assert.match(source,/repeat\(7\)/)
+})
+
+test('登录步骤切换真实管理页并高亮本服入口，完成页回评论且清理高亮',()=>{
+  const calls=[],target={},c={step:4,dialog:{close(){}},coach:{hidden:true},message(){},render(){},accountPlatform:()=> 'os',$o:id=>{assert.equal(id,'account-os');return target},pointAt:node=>{assert.equal(node,target);calls.push('target')},clearTargets:()=>calls.push('clear'),switchTab:tab=>{assert.ok(['list','notes','mgmt','appearance'].includes(tab),'Unknown actual tab '+tab);calls.push(tab)}};vm.createContext(c)
+  const start=source.indexOf('  function showCoach(');vm.runInContext(source.slice(start,source.indexOf('  function accountPlatform()',start)),c)
+  vm.runInContext('showCoach(5)',c);assert.deepEqual(calls,['mgmt','target']);vm.runInContext('showCoach(6)',c);assert.deepEqual(calls,['mgmt','target','clear','list'])
+})
+
+test('教程开窗说明作为可见信息显示，不隐藏、不冒充验证成功，空消息会清除',()=>{
+  const node={},c={step:5,$o:id=>{assert.equal(id,'onboardCoachMessage');return node}};vm.createContext(c)
+  const start=source.indexOf('  function message(');vm.runInContext(source.slice(start,source.indexOf('  function render()',start)),c)
+  vm.runInContext('message("Requested; not verified",false)',c);assert.equal(node.className,'msg info');assert.equal(node.textContent,'Requested; not verified')
+  vm.runInContext('message("Login failed")',c);assert.equal(node.className,'msg err');vm.runInContext('message("",false)',c);assert.equal(node.className,'msg')
+})
 test('新浏览器首次进入自动打开教程，已有记录可手动重开，存储不可用仍打开',()=>{
   for(const stored of [null,'done','later','blocked']){
     let opened=0

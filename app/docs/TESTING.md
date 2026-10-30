@@ -82,3 +82,73 @@ reading-header.test.cjs checks downward hiding, upward reveal, top-of-page behav
 ## First-sync marker lifecycle
 
 update-rounds.test.cjs verifies page-round snapshots, stable region/level identity across renames, independent regions, manual clearing, and old-backend detection. update-rounds-api.test.cjs launches the real service in an isolated directory and checks partial additions plus failed replies, retry without losing current-session additions, no-change sync accumulation, a fresh-page baseline clearing previous markers, independent group-member failure, unchanged comment bodies, and invalid baseline input rejection.
+
+## Official account entry regression
+
+`accounts.test.cjs` checks platform/command input rejection, separate China/global windows, repeated clicks before startup, exit/reopen and stale process events, missing components, process errors, frontend out-of-order results, network failure recovery and all 15 management-page language dictionaries. The real HTTP suite verifies resources, invalid platforms, origin/content-type protection and the absence of credentials or posting authorization in status responses.
+
+The native helper build runs address/region/role-response checks and initializes a real blank WebView2 control. These checks do not validate live account sign-in, OAuth callbacks, the official login dialog layout or Wonderland posting permission. The diagnostic native-window controls currently use Chinese; the collector's account panel has 15 language dictionaries. Automated tests do not send real comments. The separate, explicitly authorized live check is recorded below.
+
+
+## Local reply and latest-query integration · 2026-10-29
+
+The complete automated suite contains **230 passing tests**, with zero skipped tests. Replies and remote collection are mocked in disposable directories; tests never read real account profiles or publish official replies. Existing import, group, title, update-round, appearance, notes, storage, security and release checks remain included.
+
+- replies.test.cjs: target/region/root/child identity, own-role matching, ticket expiry, sync exclusion, account separation, duplicate UUIDs, concurrent sends, restart receipts, unknown results, pre-POST disk failure, post-confirmation local failures, deletion ownership/confirmation and preserved descendants/notes/history.
+- reply-panel.test.cjs: late target responses, account-separated drafts, failed rechecks, sending/ESC locks, unknown-attempt restoration, successful draft cleanup, own-delete visibility/confirmation and locale rerendering.
+- reply-api.test.cjs: real isolated HTTP server plus fake native bridge; latest queries and snapshot pages, sender matching, one local send, duplicate receipt, own deletion, note history, foreign-origin refusal and original sync language forwarding. Response bodies are checked against the included OpenAPI schema keywords by a test-only validator; this is not a full standards validator.
+- latest.test.cjs: recent nested replies under old roots, own publication times, source/group/kind/update filters, same IDs on different servers, cursor invalidation after file changes, legacy missing IDs and corrupted/foreign data rejection.
+- account-bridge.test.cjs and native --self-test: fixed subprocess arguments, UTF-8 pipes, timeouts/unknown outcomes, send/delete parameter validation. Native login --self-test and --smoke also pass; smoke initializes a blank real WebView2 control.
+- Browser: disposable Chrome mock origin, root/child reply opening, automatic role display, explicit fake send/success state, own-child delete visibility, English locale and Sakura light theme. Initial heading and footer fit a 1294×591 viewport without horizontal overflow. The footer remains available while the dialog body scrolls. Browser deletion confirmation behavior is covered by the panel test; no official deletion was executed.
+
+Separate live validation: the operator signed in to Miyoushe and authorized exactly one test reply on their own floor-4 review. The post succeeded and official readback found it. The operation used an isolated local corpus/attempt ledger; production config/data were not rewritten. Do not rerun this live test as regression or silently delete the test reply.
+
+HoYoLAB has not been verified after real login for role selection/posting. Public deletion is not live-verified. Official risk controls, proxy availability, OAuth providers and future endpoint behavior remain external limits. Root-review deletion is not implemented.
+
+
+### Detection and compact composer follow-up
+
+Five additional tests cover 60-second per-region cache expiry, defensive copies, forced reads, platform invalidation, stale inflight results, cross-account invalidation, failed writes and unavailable-result handling. Existing panel tests now cover immediate source preview, forced account rechecks, discarded pre-login responses, compact account controls and a separate management mode that cannot send. All 15 languages include the new labels.
+
+The native self-test exercises fast preferred reads, a slow preferred route with a successful fallback and loser cancellation, both-route failure, and a healthy official business rejection without a duplicate request. Writes still use one POST. Real read-only China detection samples were about 29.5 seconds before, then 5.2 and 4.7 seconds after; the immediate same-region cache hit took under one millisecond in the backend measurement. Network timeout failures also occurred, so these are observations rather than guaranteed limits or a controlled latency study. No public message was sent or deleted in this follow-up.
+
+Browser follow-up uses disposable data: default reply mode, folded/expanded account options, an own-child management/delete mode, a fake send, Sakura light and Golden Stone skins. The compact default dialog fits the 1304×591 desktop viewport without hiding its title or footer. Earlier full-editor screenshots are historical; the default now contains no login/recheck/delete button grid.
+
+
+### Reply-label, account layout and verified deletion fixes · 2026-10-30
+
+The three added Node tests cover unverified native success, acknowledged-but-unknown deletion, unchanged local files, no duplicate POST, legacy receipts without proof and frontend refusal to report old success as verified. Relationship tests also cover identical numeric/string UIDs, retained self-reply text and distinct players with the same nickname.
+
+Native self-tests now exercise the actual verification state machine with injected read/delete delegates: owned-target disappearance, a retained target, already-absent cleanup without POST, incomplete preflight, foreign ownership, readback failure and official rejection. All verify at most one destructive request. They do not perform a public deletion.
+
+An official read-only full-thread query before the interruption found that the user-deleted original test reply was absent, with the two later test replies still present. This is evidence for that specific user operation, not a live run of the newly added pre/post verifier. No public reply was sent or deleted by the agent in this fix round. Production config/data are checked against the fresh pre-fix baseline, which includes the user’s own intervening operations.
+
+Browser QA used the in-app browser and disposable data because the Chrome extension was disconnected: a self-targeted row retains its body without a target badge; another player keeps its badge. Expanded account settings have zero outer border, zero inherited bottom margin and zero extra gap before contents. Saved screenshots show the actual page, with no production account data.
+
+
+### Read-only reconciliation and close preference
+
+Six added Node tests cover the separate readonly native command, unknown-delete receipt promotion without a second delete, present/incomplete/failed readback, concurrent verification, HTTP refresh validation, preserved attempt locks on busy responses, default close, persistent stay preference, and keeping failed/partially saved dialogs open. Native validation accepts verification commands without account aid but still requires original owned UID/context.
+
+A real logged-in Europe profile was used only for reading: the screenshot target was absent from the authenticated official thread. An isolated copy containing that one parent and attempt was reconciled through the new service; it became verified/deleted with local-copy cleanup and no public write. Original config/data were not used as a writable test database. This checks read-only reconciliation, not a new public deletion.
+
+### Automatic deletion follow-up and narrow login window
+
+Ten new Node tests cover delayed disappearance after retained/incomplete/failed reads, bounded retries and deadlines, service restart, login mismatch, busy sync, local-save retries without another official request, old pending recovery, registration removal, damaged storage, dialog close, stale replies arriving into another composer, backend receipt restoration without a draft, and page reload. A real localhost HTTP test uses the normal 3/7 second first follow-up delays: retained once then absent, one simulated deletion POST, two read-only checks, local row removal and note history preservation. Existing shutdown regression now checks that active and newly started background verification delays auto-exit.
+
+Native build self-tests validate FitZoom bounds. The real hidden WebView2 smoke test loads a local 1280px layout with an account button at the right, checks visibility at 740/900/1140px windows, and checks manual zoom. No official login or public write is performed by these tests. Browser QA uses disposable mock replies only. Production config/data are checked against the fresh pre-change hash baseline.
+
+### Account disclosure, onboarding and security-focused checks
+
+Ten additions cover explicit Show/Hide labels and collapse persistence across render/language changes; login, role and network reason separation; fifteen-locale completeness; optional tutorial platform selection; actual mgmt tab navigation and highlight cleanup; visible non-success window-request messages; and credential canaries in account/role/error responses. Raw HTTP tests exercise Origin/null/Fetch metadata/Host denial and static configuration, receipt, executable and traversal path refusal. Arbitrary retcode text is now dropped instead of truncated into receipts. Native self-tests and the real WebView2 smoke are rerun separately.
+
+Browser QA walks real mock import, filters, note creation and persisted editing before the new optional sign-in lesson. It checks both dark and pink themes, explicit collapse labels, owner-only deletion explanations, actual account-section navigation and the retained final translation tip. No real credentials are entered and no official replies are posted/deleted. [SECURITY.md](SECURITY.md) documents scope and local-client limitations rather than claiming universal security.
+
+
+### Login window visibility and restoration · 2026-10-30
+
+The complete suite now contains **230 tests** with zero failures or skips. Four new tests cover split native readiness output, spawn without visibility, bounded invalid/oversized/no-output responses, extra-field redaction, concurrent repeat activation, activation errors, retained real-window ownership and the frontend focus-denied notice. Existing tests additionally verify the new messages in all 15 locales. Opening a window never grants account or sender authorization.
+
+The native --activation-smoke runs a profile-free Windows form, minimizes it and restores it through the real fixed-EXE activation subprocess, validating the bounded visibility protocol. A separate call targeting the test PowerShell PID is rejected because its executable differs. The native login self-test, real local-layout WebView2 smoke and Session Bridge self-test also pass. These checks do not sign in to official services, use real cookies, or send/delete public content. Windows foreground-focus restrictions remain possible and receive an explicit UI message.
+
+Delivery gate: the full suite is run from source, the clean delivery folder and the extracted final ZIP. Program/document hashes, backup integrity, personal-data hashes and package credential scans are checked separately. Prior browser and live records above remain historical evidence; this round does not claim a new live login/post/delete or a fresh visual run of every theme.

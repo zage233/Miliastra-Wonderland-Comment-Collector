@@ -1,6 +1,12 @@
 'use strict'
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm')
 const app=path.resolve(__dirname,'..'),html=fs.readFileSync(path.join(app,'app.html'),'utf8')
+
+test('新增权限、登录教程与收起入口在十五语种无漏译、无混入标签或空占位',()=>{
+  const c={window:{}};vm.createContext(c);for(const name of ['i18n.js','reply-i18n.js'])vm.runInContext(fs.readFileSync(path.join(app,name),'utf8'),c)
+  const keys=['reply.accountExpand','reply.accountCollapse','reply.deletePermissionTitle','reply.deletePermissionBody','reply.deleteNeedsLogin','onboard.accountTitle','onboard.accountBody','onboard.accountOpened']
+  for(const[lang]of c.window.QX_LANGS)for(const key of keys){const value=c.window.QX_I18N[lang][key];assert.ok(value?.trim(),lang+' '+key);assert.doesNotMatch(value,/<\/?(?:script|iframe|img)|undefined|\[object Object\]/,lang+' '+key);if(!lang.startsWith('zh')&&lang!=='ja-jp')assert.doesNotMatch(value,/[\u4e00-\u9fff]/,lang+' '+key)}
+})
 test('本地请求仅接受实际监听端口的回环 Host，拒绝外部/空/伪装 Origin 与跨站 Fetch 元数据',()=>{
   const source=fs.readFileSync(path.join(app,'server.js'),'utf8'),c={URL};vm.createContext(c)
   vm.runInContext(source.slice(source.indexOf('function requestRejection'),source.indexOf('function readBody')),c)
@@ -36,3 +42,4 @@ test('CSV 保留普通文字、引号、换行、表情及空值，评论与便�
   const exports=html.slice(html.indexOf("$('csv').onclick"),html.indexOf('/* ── 添加游戏'))
   assert.equal((exports.match(/\.map\(q\)/g)||[]).length,4)
 })
+

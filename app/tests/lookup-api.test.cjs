@@ -18,7 +18,7 @@ test('单服查询、名字搜索和添加均返回分类错误；未确认的�
       searchLevelByName: async () => { throw error }, addGame: () => { writes++; return { ok: true } } }
     const server = { on() {}, listen(port, host, callback) { callback() }, close() {} }
     const c = { require: n => n === 'node:http' ? { createServer: fn => { handler = fn; return server } } :
-      n === './collect.js' ? collect : n === './import-batch.js' ? require('../import-batch.js') : require(n),
+      n === './collect.js' ? collect : n === './import-batch.js' ? require('../import-batch.js') : n === './accounts.js' ? require('../accounts.js') : n === './replies.js' ? require('../replies.js') : n === './latest.js' ? require('../latest.js') : require(n),
       __dirname: path.resolve(__dirname, '..'), process: { argv: ['node','server','--no-open','--stay'], env: {}, on() {} },
       console: { log() {}, error() {} }, URL, Buffer, setTimeout() {}, clearTimeout() {}, setInterval() {},
       requestBody: { input: '123456789', region: 'os_asia', name: 'Custom name' } }

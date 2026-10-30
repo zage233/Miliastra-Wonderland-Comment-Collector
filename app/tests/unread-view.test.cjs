@@ -55,4 +55,9 @@ test('子回复明确标出对象、保留嵌套深度，悬浮只高亮目标�
   assert.equal(c.box.querySelectorAll('.sub-related').length,1)
   assert.equal(c.box.querySelectorAll('.sub-related')[0],c.box.children[0])
   c.box.children[1].onmouseleave();assert.equal(c.box.querySelectorAll('.sub-related').length,0)
+  c.selfBox=new Element();c.selfRows=[{reply_id:'self',user_info:{uid:'1',nickname:'Same'},r_user:{uid:1,nickname:'Same'},content:'Own reply'},{reply_id:'other',user_info:{uid:'2',nickname:'Same'},r_user:{uid:'1',nickname:'Same'},content:'Different player, same nickname'}]
+  vm.runInContext('renderSubReplies(selfBox,selfRows)',c)
+  assert.equal(c.selfBox.children[0].children[0].children.length,1,'同 UID 的自我回复隐藏对象标签，不删除正文')
+  assert.equal(c.selfBox.children[0].children[1].textContent,'Own reply');assert.equal(c.selfBox.children[0].dataset.targetKey,'')
+  assert.equal(c.selfBox.children[1].children[0].children[1].textContent,'Reply to Same','同名但不同 UID 的回复仍显示对象')
 })

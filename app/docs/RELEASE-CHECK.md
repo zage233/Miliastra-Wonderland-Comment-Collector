@@ -1,6 +1,6 @@
 # GitHub 交付核验与上传指南 / Delivery and upload guide
 
-交付日期：2026-10-29。项目英文名：**Miliastra Wonderland Comment Collector**。
+交付日期：2026-10-30。项目英文名：**Miliastra Wonderland Comment Collector**。
 
 ## 交付文件是什么
 
@@ -42,7 +42,7 @@ node --test app/tests/*.test.cjs
 
 本地副本通过核验，不等于未来的网页上传结果必然一致。仓库下载后的复核用于确认上传没有漏文件、改变路径或保留旧文件；校验清单随包交付，不需要依赖聊天记录。
 
-## 此交付的验证记录
+## 此前标题版本的验证记录（历史）
 
 下列长期功能的浏览器记录包含此前已完成的检查；本轮新增实测单独列在“本轮”条目，全部自动回归在本轮重跑。
 
@@ -68,7 +68,7 @@ Extract the complete delivery, install Node.js 18+, then run both commands above
 
 Upload the folder's **contents**, preserving `app/` and both dotfiles. Web uploads do not remove old files. Download the repository ZIP after upload and repeat verification to detect missing, changed or leftover files. Use the complete ZIP as a Release asset; the EXE alone is not a standalone installation.
 
-The delivery gate is 160 passing tests in each of three consecutive source runs, and separately from the final folder and extracted ZIP, matching static hashes and clean user-data directories. This round strengthens independent region/language title requests, reordered responses, explicit identity rejection, partial failures and overlapping operations. Two real global stages were previously verified read-only in Chinese and English. Visual records above describe previous validated features, not a fresh manual run of every theme/language. Deterministic local tests do not certify every live proxy, future remote API behavior, arbitrary browser translations or exact reply links absent from upstream data.
+The previous title-version delivery gate was 160 passing tests in each of three consecutive source runs, and separately from the final folder and extracted ZIP, matching static hashes and clean user-data directories. This round strengthens independent region/language title requests, reordered responses, explicit identity rejection, partial failures and overlapping operations. Two real global stages were previously verified read-only in Chinese and English. Visual records above describe previous validated features, not a fresh manual run of every theme/language. Deterministic local tests do not certify every live proxy, future remote API behavior, arbitrary browser translations or exact reply links absent from upstream data.
 
 版本说明与校验清单已归入 app/docs/。若仓库根目录还留有旧版 RELEASE_NOTES.md 和 SHA256SUMS.txt，请在上传新目录后删除这两个旧位置的文件；网页上传不会自动移动或删除它们。README 和 LICENSE 保留根目录，以便 GitHub 展示首页与识别许可证。
 
@@ -76,3 +76,36 @@ Release notes and the checksum manifest now live under app/docs/. If updating an
 
 
 本次新增核验：每页／每关卡首次成功同步自动换轮；部分失败保留旧标记，本轮部分新增在重试后仍保留；同组成功与失败分别处理；旧后台协议提示重启；手动清除按钮的数量、强调色与同步禁用状态。浏览器已验证同次打开累计、关闭重开后首次同步及手动清除。
+
+
+## 本轮本地回复及 AI 查询交付
+
+本轮代码与文档包括本地回复、本人子回复删除、自动删除核对，以及最新主评论／子回复查询。自动套件为 230 项，源码回归已通过；正式使用以完整新副本的文件清单与回归结果为准。详见 [TESTING.md](TESTING.md)。原生组件的编译与自测记录见测试文档，相关 SDK 许可保留。
+
+查询与写入集成见 [AI-INTEGRATION.md](AI-INTEGRATION.md) 和 [openapi.json](openapi.json)。米游社一次获准实发已读回；HoYoLAB 实发和公开删除仍未验证，主评价删除尚未提供。不能将隔离模拟测试描述为所有平台实发通过。
+
+发布副本必须保持 config/games.json 为空，不携带 reply-attempts.json、个人评论、便签、Cookie／代理或浏览器会话。若升级个人安装，应保留完整 config/ 和 data/，其中尝试回执用于防重发。新安装与上传副本是不同用途，勿混用。
+
+
+后续精简：默认回复正文优先，账号设置折叠，本人删除单独管理；检测并行及一分钟短缓存，打开登录时失效，写入前仍联网核验。仅只读请求允许备用线路竞速，公开发言与删除不重试。耗时样本与验证限制见 TESTING.md。
+
+
+本轮追加：自我回复标签按 UID 判断、账号设置去除重复外框、删除前归属核验及删除后完整官方列表缺席核验。旧删除回执缺少 verified 时不冒充成功，新版核验未确认时保留本地。不重发任何结果不明的删除。用户此前的一条删除记录已只读核对不存在；新版核验流程未由代理执行公开删除。
+
+
+追加交付：未知删除可只读重新核验并更新原回执，提供仍存在／列表不完整／查询失败的区别；操作成功且本地保存完成后默认关闭弹窗，可选择停留并记住。真实欧服只读核验与隔离副本复核通过，没有再次执行公开删除。
+
+## 本轮补充核验
+
+- 删除后台自动核对、关闭弹窗后的列表更新、重启恢复、暂停继续、本地保存补偿均通过隔离回归；等待时不锁住整轮同步，核对中仍保持互斥。
+- 官方登录 EXE 已重新构建，真实 WebView2 窄窗口布局测试与原有安全自测通过。新版要关闭旧官方窗口后才能替换 EXE；重启后台并强制刷新浏览器。
+- 完整回归共 230 项；交付目录和 ZIP 解压副本分别复测并校验。测试没有向官方发送或删除公开内容，也不把模拟结果声称为所有区服实删通过。
+
+本轮增加账号设置明显展开／收起、删除权限说明和可跳过的登录教程；安全检查报告位于 `app/docs/SECURITY.md`。本次交付除个人数据清洁校验外，另行扫描凭据型文件名及私钥块；这不代替对任意未知秘密格式的人工检查。
+
+
+## 本次登录窗口修复交付 · 2026-10-30
+
+源码、清洁交付目录与最终 ZIP 解压副本各执行完整 230 项测试，均需通过。原生登录的安全自测、真实本地 WebView2 布局测试、最小化恢复测试，以及 Session Bridge 自测另行检查；异程序 PID 激活应拒绝。文件清单覆盖 85 个程序／文档文件，包内不含个人会话、评论、便签、代理或尝试回执。工作 config/data 对照本次修改前基线，保持不变。
+
+Windows 可能限制前台切换；页面会提示从任务栏进入，不以开窗成功冒充登录成功。更新时关闭旧官方窗口并停止旧后台，使用完整新版本，重启后 Ctrl+Shift+R 刷新。登录和回复的外部验证边界仍以 TESTING.md 为准。本次没有新增公开发送或删除。

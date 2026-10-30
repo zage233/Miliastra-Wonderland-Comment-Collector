@@ -102,3 +102,50 @@ See the [Chinese README](../../README.md) or [English README](../../README.en.md
 The UI optionally sends markerBaselines in POST /api/sync, keyed by registered entry name; each value has comments, subReplies and parents string-ID arrays. It snapshots markers before this page receives new data. On a fully successful entry sync, the collector subtracts only those baseline IDs immediately before atomic file commit, then retains this session's additions. Failed/incomplete reply runs do not roll over markers. Successful entries return markerRoundApplied in /api/progress. The sync-start response advertises markerRounds: true; a new UI warns if an old backend lacks this capability. Omitting markerBaselines preserves legacy/CLI accumulation. No comments or notes are deleted by rollover.
 
 The UI handles each region/level independently, survives in-page renames, and retries with the same baseline after partial failures. Reloading/reopening creates a fresh page round; manual marker clearing also completes the current round. The baseline is not resent after the first successful rollover in that page.
+
+## Official accounts, local replies and latest queries
+
+GET /api/accounts reports component availability and per-platform window state. replyEnabled means native components exist; roleVerified:false and verification:"per-target" mean each target still requires preparation. A running window does not prove sign-in or posting permission. This status endpoint returns no credentials or role IDs.
+
+POST /api/accounts/open takes {"platform":"cn"} or {"platform":"os"}, opening the fixed official helper. It accepts no URL, executable, cookie, password, UID or PID. Success returns {ok:true,alreadyOpen:boolean,visible:true,foreground:boolean} only after a bounded native window-ready acknowledgement (15 seconds for startup, 6 seconds for reactivation). Duplicate startup requests share the pending operation; later requests restore the existing platform window using only the backend-held PID. The helper additionally checks its executable path and Windows session. foreground:false means the window is visible but Windows did not grant foreground focus; direct the user to the taskbar. The frontend request timeout is 20 seconds. This response never proves authentication or role authorization. Invalid platforms return 400, missing components or startup/readiness failures 503. Host/Origin/JSON protections apply.
+
+The detailed calling guide is [AI-INTEGRATION.md](AI-INTEGRATION.md), with the machine-readable subset in [openapi.json](openapi.json). These are local APIs, not a promise of an officially supported API or all-platform posting permission.
+
+| Method and path | Input | Meaning |
+|---|---|---|
+| GET /api/replies/latest | repeated name OR group; kind=all/comment/reply, since, limit, cursor, updatesOnly | Local roots and saved children sorted by each item's own official time |
+| POST /api/replies/prepare | name, parentReplyId, optional subReplyId | Derive server; verify account and own roles; five-minute ticket, canDelete |
+| POST /api/replies/send | target, ticket, own uid, content, persisted UUID attemptId | One authorized public reply; sent:true remains success even with localSaved:false |
+| POST /api/replies/status | target, original attemptId | Persistent send/delete receipt, even after a deleted child disappears |
+| POST /api/replies/delete | child target, ticket, own uid, UUID attemptId, confirm:true | Delete only a verified own child; no root-review deletion |
+
+Latest-query numeric since is Unix seconds, or an ISO datetime with timezone, unrelated to /api/progress's log offset. Children under old parents use their own publication time. Missing times are null and sort last. Changed file snapshots reject old cursors with 409 changed: restart and deduplicate durable event keys. partialReplies and per-source incomplete counts distinguish partial collection. Queries do not fetch remote data; sync, thread refresh or writes cause 409 busy. Update markers can be cleared and include own sent content, so they are not a durable AI cursor or author-edit detector. The guide covers overlap, late arrivals and self-reply loop prevention.
+
+The native helper rechecks account and target-server role before one fixed HTTPS POST. Credentials stay inside that helper and its dedicated profile, never returned to Node/HTTP/AI. config/reply-attempts.json is persisted before posting: context, UID, content hash and receipt, no plaintext content or cookies. Unknown results are not automatically retried; reuse the original attempt for receipt lookup, rather than generating a new UUID. Restart invalidates tickets but preserves receipts. The ledger limit is 10,000 attempts, without silent pruning.
+
+Own-child deletion preserves other users' descendants and note text. Existing notes retain deleted rows in read-only deletedSubReplies history, excluded from latest queries and current reply targets. Confirmed writes may need a later local refresh if local persistence fails. Miyoushe login/role selection and one authorized post were verified by official readback; global posting after login and public deletion remain unverified. Local HTTP tests use a fake native bridge.
+
+
+Prepare additionally accepts boolean force:true to bypass the per-region, 60-second in-memory successful-check cache. cached and checkedAt report reuse and original verification time. Account-window opening invalidates platform cache/tickets; running windows bypass caching. Account changes invalidate other cached regions of that platform. Concurrent stale results cannot refill invalidated caches. Native send/delete always perform fresh account and role reads. GET identity and role checks now run in parallel, with a 400 ms read-only alternate-route hedge; losing GETs are aborted. POSTs are never hedged or automatically retried.
+
+
+## Verified deletion receipt · 2026-10-30
+
+New successful delete receipts require verified:true, meaning a complete official thread read proved target absence. alreadyAbsent:true means the target was absent before the request; no delete POST was sent. Otherwise a fresh ownership read precedes one delete POST and up to three readback checks. A successful HTTP/official acknowledgement alone does not prune local storage. Remaining target, incomplete pages or read failure return unknown and preserve local rows. acknowledged:true may indicate an accepted request without confirmed disappearance. Legacy deleted receipts lacking verified are surfaced as unknown without reposting or rewriting the ledger. The native 65-second operation deadline and page limits can produce a conservative unknown result.
+
+Self-target tags are omitted from rendered replies and note CSV only when author/addressee UIDs match. Raw r_user and exact reply IDs remain unchanged, including latest-query data. Matching nicknames with different UIDs are not suppressed.
+
+
+POST /api/replies/status accepts optional boolean refresh:true for read-only reconciliation of uncertain delete receipts. Native --verify-delete checks the current account owns the original server UID, then reads the original thread without calling deletion. Verified absence returns reconciled:true and updates the same persistent attempt and local stale row. present/incomplete/readFailed verification reasons preserve unknown. Pending writes younger than 90 seconds remain sending; verification is deduplicated and excludes concurrent sync/mutation. Receipt queries for sending do not guess success from matching text. The browser close-after-success preference is not an API setting.
+
+## 删除自动只读跟进协议 · 2026-10-30
+
+删除未确认后会自动在后台只读核对：逐步延长间隔，最多启动 8 次检查，调度窗口为 5 分钟（已开始的网络查询可稍后完成）。确认官方目标缺席后，自动清理本地回复、计数和更新标记，并刷新便签的当前回复快照；手写备注和删除历史保留。等待期间显示检查次数，关闭弹窗或主页面仍继续，后台重启会恢复剩余时限。持续存在、网络／分页异常或本地保存失败到达上限后明确暂停，可点“继续核对删除结果”；登录／归属不匹配会提前暂停。继续核对只读原目标，不再次发送删除。等待间隔不锁住同步，实际核对与同步／移除操作互斥。
+
+`POST /api/replies/status` 查询原 `attemptId`，无需 `refresh` 就能观察后台进展。新增可选 `followup:{state,checks,startedAt,deadlineAt,nextCheckAt?,reason}`；state 为 waiting/checking/paused/complete。`reason` 区分 present、incomplete、readFailed、localSave，以及登录／角色／存储／来源变化。收到 paused 时，向原 UUID 发送 `refresh:true` 明确继续核对；不要新建删除 UUID。已确认官方缺席但 `localSaved:false` 时，后台仅重试本地提交，不重访官网。
+
+`GET /api/replies/deletions` 是本地只读列表，返回 `{ok:true,items:[{attemptId,name,parentReplyId,subReplyId,...原回执,followup}]}`，只包含仍登记来源的等待／核对／暂停项，不含凭据或发送 UID，不主动访问官网。它用于刷新页面后恢复观察；普通 status 查询也不额外触发官方查询。prepare 成功体的可选 `deletionAttempt` 返回本目标同一拥有者最近的未完成删除回执，避免浏览器草稿缺失导致重复操作。
+
+后台已发送的删除始终最多一次 POST；跟进是原目标的只读验证。5 分钟期限跨重启保留；暂停项不会因重启自动无限重跑。短暂等待不占用同步锁；执行核对时才互斥。后台自动退出会等待有界核对任务结束，关闭浏览器不取消已请求的核对。
+
+回复错误响应的 retcode 仅保留 `-?\d{1,12}` 或 `HTTP [45]\d{2}`；任意诊断文字会省略，不用于转送凭据。安全与本地客户端边界见 [SECURITY.md](SECURITY.md)。

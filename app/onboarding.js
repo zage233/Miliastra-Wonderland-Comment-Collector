@@ -9,7 +9,7 @@
   const dialog=document.createElement('dialog')
   dialog.id='dlgOnboarding'; dialog.className='dialog onboarding'
   dialog.setAttribute('aria-labelledby','onboardTitle')
-  dialog.innerHTML='<div class="onboard-progress" aria-hidden="true">'+'<i></i>'.repeat(6)+'</div>'+
+  dialog.innerHTML='<div class="onboard-progress" aria-hidden="true">'+'<i></i>'.repeat(7)+'</div>'+
     '<p id="onboardCounter" class="onboard-counter"></p><h2 id="onboardTitle"></h2><p id="onboardBody" class="onboard-body"></p>'+
     '<div id="onboardLanguageBox"><label id="onboardLanguageLabel" for="onboardLanguage"></label><select id="onboardLanguage"></select></div>'+
     '<div id="onboardImport" hidden><label id="onboardRegionLabel" for="onboardRegion"></label><select id="onboardRegion"></select>'+
@@ -20,7 +20,7 @@
   const coach=document.createElement('aside')
   coach.id='onboardCoach'; coach.hidden=true; coach.setAttribute('aria-labelledby','onboardCoachTitle')
   coach.innerHTML='<p id="onboardCoachCounter" class="onboard-counter"></p><h2 id="onboardCoachTitle"></h2><p id="onboardCoachBody"></p><p id="onboardTranslationTip" class="onboard-translation-tip" hidden></p>'+
-    '<p id="onboardCoachMessage" role="status" aria-live="polite"></p><div class="onboard-actions"><button id="onboardCoachLater"></button><span></span><button id="onboardCoachNext" class="primary"></button></div>'
+    '<button id="onboardAccountOpen" type="button" hidden></button><p id="onboardCoachMessage" role="status" aria-live="polite"></p><div class="onboard-actions"><button id="onboardCoachLater"></button><span></span><button id="onboardCoachNext" class="primary"></button></div>'
   document.body.append(coach)
   const beacon=document.createElement('div')
   beacon.id='onboardBeacon';beacon.hidden=true;beacon.setAttribute('aria-hidden','true')
@@ -32,16 +32,16 @@
   for(const region of regions)$o('onboardRegion').add(new Option(regionName(region),region))
   const reopen=document.createElement('button')
   reopen.id='btnTutorial';reopen.type='button';document.querySelector('.langbox').before(reopen)
-  function message(text,error=true){const el=$o(step<2?'onboardMessage':'onboardCoachMessage');el.textContent=text;el.className='msg'+(error?' err':'')}
+  function message(text,error=true){const el=$o(step<2?'onboardMessage':'onboardCoachMessage');el.textContent=text;el.className='msg'+(text?(error?' err':' info'):'')}
   function render(){
     reopen.textContent=t('onboard.reopen');coach.classList.toggle('onboard-coach-left',step===3)
-    coach.classList.toggle('onboard-complete',step===5)
-    $o('onboardTranslationTip').hidden=step!==5
+    coach.classList.toggle('onboard-complete',step===6)
+    $o('onboardTranslationTip').hidden=step!==6
     $o('onboardTranslationTip').textContent=t('onboard.translationTip')
-    const titles=['onboard.language','add.title','onboard.labelsTitle','onboard.saveTitle','onboard.editTitle','onboard.doneTitle']
-    const bodies=['onboard.realIntro','onboard.importHelp','onboard.labelsBody','onboard.saveBody','onboard.editBody','onboard.doneBody']
+    const titles=['onboard.language','add.title','onboard.labelsTitle','onboard.saveTitle','onboard.editTitle','onboard.accountTitle','onboard.doneTitle']
+    const bodies=['onboard.realIntro','onboard.importHelp','onboard.labelsBody','onboard.saveBody','onboard.editBody','onboard.accountBody','onboard.doneBody']
     for(const prefix of ['onboard','onboardCoach']){
-      $o(prefix+'Title').textContent=t(titles[step]);$o(prefix+'Body').textContent=busy&&step===1?t('onboard.syncWait'):t(bodies[step]);$o(prefix+'Counter').textContent=(step+1)+' / 6'
+      $o(prefix+'Title').textContent=t(titles[step]);$o(prefix+'Body').textContent=busy&&step===1?t('onboard.syncWait'):t(bodies[step]);$o(prefix+'Counter').textContent=(step+1)+' / 7'
     }
     $o('onboardLanguage').value=state.lang
     $o('onboardLanguageLabel').textContent=t('onboard.language');$o('onboardLanguageBox').hidden=step!==0;$o('onboardImport').hidden=step!==1
@@ -50,7 +50,9 @@
     for(const id of ['onboardLater','onboardCoachLater'])$o(id).textContent=t('onboard.later')
     $o('onboardBack').textContent=t('onboard.back');$o('onboardBack').hidden=step!==1;$o('onboardBack').disabled=busy
     $o('onboardNext').textContent=t(step===1?'btn.addSync':'onboard.next');$o('onboardNext').disabled=busy||(step===1&&!info)
-    $o('onboardCoachNext').textContent=t(step===5?'btn.gotIt':'onboard.next');$o('onboardCoachNext').disabled=busy||(step===2&&!filterPracticed)||(step===4&&!noteEdited)
+    $o('onboardCoachNext').textContent=t(step===6?'btn.gotIt':'onboard.next');$o('onboardCoachNext').disabled=busy||(step===2&&!filterPracticed)||(step===4&&!noteEdited)
+    $o('onboardAccountOpen').hidden=step!==5
+    $o('onboardAccountOpen').textContent=t(accountPlatform()==='cn'?'accounts.cn':'accounts.os')
     for(const id of ['onboardInput','onboardRegion','onboardLookup','onboardLater'])$o(id).disabled=busy
     dialog.querySelectorAll('.onboard-progress i').forEach((el,i)=>el.classList.toggle('active',i<=step))
     if(active)scheduleBeacon()
@@ -65,7 +67,7 @@
     beaconFrame=0
     if(!active||!target){beacon.hidden=true;return}
     if(!target.isConnected){
-      const replacement=step===2?$o('mood'):step===3?document.querySelector('#list .star'):
+      const replacement=step===5?$o('account-'+accountPlatform()):step===2?$o('mood'):step===3?document.querySelector('#list .star'):
         [...document.querySelectorAll('#noteList .note')].find(el=>el.dataset.noteKey===starKey&&el.dataset.gameName===importedName)?.querySelector('textarea')
       if(replacement)pointAt(replacement);else beacon.hidden=true
       return
@@ -78,7 +80,7 @@
     const above=top-header>=72
     beacon.classList.toggle('beacon-below',!above)
     const label=$o('onboardBeaconLabel')
-    label.textContent=t(step===2?'onboard.labelsTitle':step===3?'onboard.saveTitle':'onboard.editTitle')
+    label.textContent=t(step===5?'onboard.accountTitle':step===2?'onboard.labelsTitle':step===3?'onboard.saveTitle':'onboard.editTitle')
     $o('onboardBeaconArrow').textContent=above?'↓':'↑'
     label.style.left=Math.max(16-left,Math.min(0,innerWidth-16-left-label.offsetWidth))+'px'
   }
@@ -121,8 +123,11 @@
     if(step===2)pointAt($o('mood'))
     if(step===3)pointAt(document.querySelector('#list .star'))
     if(step===4){const card=[...document.querySelectorAll('#noteList .note')].find(el=>el.dataset.noteKey===starKey&&el.dataset.gameName===importedName);const field=card&&card.querySelector('textarea');pointAt(field);if(field)field.focus({preventScroll:true})}
-    if(step===5)clearTargets()
+    if(step===5){switchTab('mgmt');pointAt($o('account-'+accountPlatform()))}
+    if(step===6){clearTargets();switchTab('list')}
   }
+  function accountPlatform(){return (state.games.find(game=>game.name===importedName)?.region||$o('onboardRegion').value).startsWith('cn_')?'cn':'os'}
+  $o('onboardAccountOpen').onclick=()=>{if(!active||busy||step!==5)return;$o('account-'+accountPlatform()).click();message(t('onboard.accountOpened'),false)}
   async function importFirst(){
     if(busy||!info||polling){if(polling)message(t('status.syncing'));return}
     if(info.input!==$o('onboardInput').value.trim()||info.region!==$o('onboardRegion').value){clearLookup();return}
@@ -156,7 +161,8 @@
   $o('onboardCoachNext').onclick=async()=>{
     if(!active||busy||step===1)return
     if(step===2){if(!filterPracticed)return;resetFilters();showCoach(3);return}
-    if(step===5)return finish(true)
+    if(step===6)return finish(true)
+    if(step===5){showCoach(6);return}
     const run=generation;busy=true;render()
     try{
       const note=starKey?await verifyNote():null;if(!active||run!==generation)return

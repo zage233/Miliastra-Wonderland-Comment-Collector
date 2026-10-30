@@ -549,6 +549,62 @@ body.onboard-active .onboard-target{outline:2px solid #ffd166!important;outline-
   html.reading-header-hidden{scroll-padding-top:24px}
   @media(prefers-reduced-motion:reduce){header,header.reading-hidden{transition:none}}
 </style>
+<style>
+.reply-action{font-size:12px;padding:3px 11px;white-space:nowrap}
+.sub-heading .reply-action{margin-left:auto;flex-shrink:0}
+.card .foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card .foot>.reply-action{margin-left:auto}
+.reply-dialog{width:min(680px,calc(100vw - 24px));max-height:92dvh;overflow:hidden}
+.reply-dialog .dbody{padding:22px 24px 0;max-height:calc(92dvh - 2px);overflow:auto;scroll-padding:20px}
+.reply-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.reply-dialog .reply-heading h2{margin:0;font-size:20px;line-height:1.3;color:var(--text)}
+.reply-dialog .reply-close{width:30px;min-height:30px;padding:0;font-size:22px;background:transparent;border-color:transparent;color:var(--dim);box-shadow:none}
+.reply-target-card,.reply-role-card{display:block;padding:13px 15px;border:1px solid var(--line);border-radius:12px;margin-bottom:15px;background:var(--bg);background:color-mix(in srgb,var(--bg) 45%,var(--panel))}
+.reply-dialog .reply-section-label{display:block;color:var(--dim);font-size:12px;line-height:1.4;margin:0 0 7px;font-weight:500}
+.reply-destination{font-size:13px;font-weight:650;color:var(--accent);overflow-wrap:anywhere}
+.reply-dialog blockquote{margin:7px 0 0;padding:0;max-height:82px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border:0;background:transparent;font-size:13px;line-height:1.65;color:var(--text)}
+.reply-dialog .reply-role{display:block;margin:0;color:var(--text)}
+.reply-role select{width:100%;min-width:0;max-width:100%;margin-top:0;background:var(--panel)}
+.reply-account{font-size:12px;color:var(--dim);overflow-wrap:anywhere;margin-top:7px}
+.reply-account:empty{display:none}
+.reply-account-bar{position:relative;display:flex;align-items:flex-start;gap:12px;justify-content:space-between;margin-top:14px;flex-wrap:wrap}
+.reply-account-bar>.reply-status{margin:0;flex:1;min-width:140px}
+.reply-account-options{margin-left:auto;max-width:100%;font-size:12px;color:var(--dim);border:0;background:transparent;border-radius:0;margin-bottom:0;padding:0}
+.reply-account-options>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;list-style:none;white-space:normal;line-height:1.5;padding:8px 12px;min-height:36px;border:1px solid var(--accent);border-radius:9px;color:var(--text);background:var(--panel2);background:color-mix(in srgb,var(--accent) 10%,var(--panel));font-weight:650;transition:background .15s,border-color .15s,box-shadow .15s}
+.reply-account-options>summary:hover{background:color-mix(in srgb,var(--accent) 24%,var(--panel));border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 16%,transparent)}
+html[data-hover-mode=custom] .reply-account-options>summary:hover{background:var(--hover-custom);color:var(--hover-text);border-color:var(--hover-text)}
+html[data-hover-mode=custom] .reply-account-options>summary:hover::after{color:var(--hover-text)}
+.reply-account-options>summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.reply-account-options>summary::-webkit-details-marker{display:none}
+.reply-account-options>summary::after{content:'⌄';font-size:18px;line-height:1;flex:none;color:var(--accent)}.reply-account-options[open]>summary::after{content:'⌃'}
+.reply-account-options[open]{flex-basis:100%;width:100%;margin-top:0}.reply-account-options[open]>summary{text-align:left}
+.reply-account-details{border:0;border-radius:0;padding:10px 0 0;margin-top:0;background:transparent}
+.reply-dialog.is-managing #replyComposeLabel,.reply-dialog.is-managing #replyContent,.reply-dialog.is-managing .reply-meta,.reply-dialog.is-managing #replySend{display:none}
+.reply-dialog.is-managing .reply-target-card{margin-bottom:6px}
+.reply-dialog textarea{display:block;width:100%;min-height:96px;height:132px;resize:vertical;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:11px;padding:12px;font:inherit;font-size:14px;line-height:1.7;margin-top:0;transition:border-color .15s,box-shadow .15s}
+.reply-dialog textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.reply-meta,.reply-footer{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.reply-meta{justify-content:space-between;font-size:11px;color:var(--dim);margin-top:7px}
+.reply-footer{position:sticky;bottom:0;z-index:2;margin:18px -24px 0;border-top:1px solid var(--line);padding:13px 24px;background:var(--panel)}
+.reply-footer-space{flex:1}.reply-footer button{white-space:normal}
+.reply-dialog .reply-close-choice{display:flex;align-items:center;gap:6px;margin:0;font-size:11px;color:var(--dim);cursor:pointer;line-height:1.5}
+.reply-dialog .reply-close-choice input{width:14px;height:14px;min-height:0;margin:0;flex:none;accent-color:var(--accent)}
+.reply-dialog .rowacts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.reply-dialog .rowacts button{font-size:12px;padding:7px 10px;min-height:32px}
+.reply-more{font-size:11px;line-height:1.5;padding:4px 8px;color:var(--dim)}
+.reply-status{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.55;overflow-wrap:anywhere;margin:9px 0 0;color:var(--dim)}
+.reply-status::before{content:'';display:block;flex:none;width:7px;height:7px;margin-top:6px;border-radius:50%;background:var(--accent)}
+.reply-status.is-checking::before{width:12px;height:12px;margin-top:3px;border:2px solid var(--line);border-top-color:var(--accent);background:none;animation:reply-spin .8s linear infinite}
+.reply-status.is-success{color:var(--good)}.reply-status.is-success::before{background:var(--good)}
+.reply-delete-hint{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--text);margin:14px 0 0;padding:12px 14px;line-height:1.7;border:1px solid var(--accent);border-left-width:4px;border-radius:10px;background:var(--panel2);background:color-mix(in srgb,var(--accent) 10%,var(--panel));overflow-wrap:anywhere}
+.reply-delete-hint[hidden]{display:none}
+#onboardAccountOpen{margin-top:12px;white-space:normal}#onboardAccountOpen[hidden]{display:none}
+.onboarding .msg.info,#onboardCoach .msg.info{display:block;background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+.reply-delete-hint strong{display:block;font-size:13px;color:var(--accent);margin-bottom:3px}.reply-delete-hint span{display:block}.reply-delete-hint .reply-permission-icon{display:grid;place-items:center;width:22px;height:22px;flex:none;border:1px solid var(--accent);border-radius:50%;color:var(--accent);font-size:14px;font-weight:750;line-height:1;margin-top:2px}
+@keyframes reply-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.reply-status.is-checking::before{animation:none}}
+@media(max-width:480px){.reply-dialog .dbody{padding:17px 16px 0}.reply-footer{margin-left:-16px;margin-right:-16px;padding:11px 16px;gap:8px}.reply-footer button{font-size:12px;padding:8px 10px}.reply-target-card,.reply-role-card{padding:11px 12px}}
+</style>
 </head>
 <body>
 
@@ -691,6 +747,15 @@ body.onboard-active .onboard-target{outline:2px solid #ffd166!important;outline-
 
 <!-- ══════ 管理 ══════ -->
 <section id="tab-mgmt" role="tabpanel" aria-labelledby="navManage">
+  <div class="mgmt" id="officialAccounts">
+    <h3 id="accountsTitle">官方账号</h3>
+    <p class="muted" id="accountsHint">登录由官方窗口处理，国服和外服的登录状态独立保存。</p>
+    <div class="rowacts">
+      <button type="button" id="account-cn" disabled>米游社 · 国服登录</button>
+      <button type="button" id="account-os" disabled>HoYoLAB · 国际服登录</button>
+    </div>
+    <p class="muted" id="accountMessage" role="status" aria-live="polite">奇域角色与回复权限尚待验证，暂未开放本地回复。</p>
+  </div>
   <div class="mgmt">
     <h3 id="mgmtTitle">已登记的游戏</h3>
     <div class="mgmt-table-scroll">
@@ -921,6 +986,7 @@ body.onboard-active .onboard-target{outline:2px solid #ffd166!important;outline-
 </dialog>
 
 <script src="/i18n.js"></script>
+<script src="/reply-i18n.js"></script>
 <script src="/note-store.js"></script>
 <script>
 'use strict'
@@ -1535,7 +1601,7 @@ function unreadSubView(items, ids = new Set(), pin, only) {
   const out=[],visit=nodes=>{for(const n of nodes){if(only&&!n.hasUnread)continue;out.push({row:n.row,depth:n.depth});visit(n.children)}}
   visit(roots);return out
 }
-function renderSubReplies(box, rows, newIds = new Set(), { pin = state.pinUnread, only = state.onlyUnread } = {}) {
+function renderSubReplies(box, rows, newIds = new Set(), { pin = state.pinUnread, only = state.onlyUnread, replyTarget = null } = {}) {
   box.textContent = ''
   for (const { row, depth } of unreadSubView(visibleSubReplies(rows),newIds,pin,only)) {
     const line = document.createElement('div')
@@ -1543,8 +1609,9 @@ function renderSubReplies(box, rows, newIds = new Set(), { pin = state.pinUnread
     line.style.setProperty('--sub-depth',depth)
     line.tabIndex=0
     const userKey=user=>user?.uid?'uid:'+String(user.uid):user?.nickname?'name:'+user.nickname:''
+    const recipient=row.r_user?.uid!=null&&row.user_info?.uid!=null&&String(row.r_user.uid)===String(row.user_info.uid)?null:row.r_user
     line.dataset.authorKey=userKey(row.user_info)
-    line.dataset.targetKey=userKey(row.r_user)
+    line.dataset.targetKey=userKey(recipient)
     const clearRelation=()=>{for(const other of box.querySelectorAll('.sub-related'))other.classList.remove('sub-related')}
     const showRelation=()=>{clearRelation();if(line.dataset.targetKey)for(const other of box.querySelectorAll('.sub-line'))if(other!==line&&other.dataset.authorKey===line.dataset.targetKey)other.classList.add('sub-related')}
     line.onmouseenter=showRelation;line.onfocus=showRelation
@@ -1552,18 +1619,28 @@ function renderSubReplies(box, rows, newIds = new Set(), { pin = state.pinUnread
     const heading=document.createElement('div');heading.className='sub-heading'
     const author=document.createElement('span');author.className='sub-author';author.textContent=(row.user_info || {}).nickname || '—'
     heading.append(author)
-    if(row.r_user?.nickname){
+    if(recipient?.nickname){
       const target=document.createElement('span');target.className='sub-target'
-      target.textContent=t('sub.replyTo').replace('{name}',row.r_user.nickname)
+      target.textContent=t('sub.replyTo').replace('{name}',recipient.nickname)
       target.title=t('sub.relationHint');heading.append(target)
     }
     if(row.created_at){const time=document.createElement('span');time.className='sub-time';time.textContent=fmtTime(row.created_at);heading.append(time)}
+    if(replyTarget && row.reply_id){
+      const reply=document.createElement('button');reply.type='button';reply.className='reply-action';reply.textContent=t('reply.action');reply.disabled=!globalThis.QXReplies
+      const source={...replyTarget,subReplyId:String(row.reply_id),preview:{...replyTarget.preview,targetName:(row.user_info||{}).nickname||'—',targetText:String(row.content||'').slice(0,600)}}
+      reply.onclick=()=>globalThis.QXReplies?.open(source)
+      heading.append(reply)
+      const more=document.createElement('button');more.type='button';more.className='reply-more';more.textContent=t('reply.manageAction');more.title=t('reply.manage');more.disabled=!globalThis.QXReplies
+      more.onclick=()=>globalThis.QXReplies?.open({...source,manage:true});heading.append(more)
+    }
     const text=document.createElement('span');text.className='sub-text';text.setAttribute('translate','yes');text.textContent=row.content || ''
     line.append(heading,text)
     box.append(line)
   }
 }
 function makeCard(r, flash) {
+  const replyGame=r._gameName?state.games.find(g=>g.name===r._gameName):state.games[state.gameIdx]
+  const replyTarget=replyGame&&r.reply_id?{name:replyGame.name,parentReplyId:String(r.reply_id),subReplyId:'',preview:{name:replyGame.name,region:replyGame.region,parentFloor:String(r.floor_id||''),targetName:(r.user_info||{}).nickname||'—',targetText:String(r.content||'').slice(0,600)}}:null
   const card = document.createElement('div')
   card.className = 'card ' + (r._rating === 'good' ? 'good' : 'bad') + (r._tpl ? ' dflt' : '') + (flash ? ' flash' : '')
   if (r._isNew) card.classList.add('unread')
@@ -1610,7 +1687,7 @@ function makeCard(r, flash) {
     summary.textContent = threadLabel()
     thread.append(summary)
     const subs = document.createElement('div'); subs.className = 'subs'
-    renderSubReplies(subs, r._subs, r._newSubIds)
+    renderSubReplies(subs, r._subs, r._newSubIds, { replyTarget })
     const actions = document.createElement('div'); actions.className = 'rowacts'
     const load = document.createElement('button'); load.textContent = t('sub.load')
     const status = document.createElement('span'); status.className = 'muted'; status.setAttribute('role', 'status')
@@ -1627,7 +1704,7 @@ function makeCard(r, flash) {
         for (const id of result.newIds || []) r._newSubIds.add(id)
         r._newSubCount = visibleSubReplies(result.replies).filter(({ row }) => r._newSubIds.has(String(row.reply_id || row.floor_id))).length
         summary.textContent = threadLabel()
-        renderSubReplies(subs, result.replies, r._newSubIds)
+        renderSubReplies(subs, result.replies, r._newSubIds, { replyTarget })
         renderStats()
         await loadNotes()
         status.textContent = t(result.complete ? 'sub.loaded' : 'sub.partial').replace('{n}', visibleSubReplies(result.replies).length)
@@ -1642,6 +1719,10 @@ function makeCard(r, flash) {
   if (r.client_ip) bits.push('IP ' + r.client_ip)
   if (r.is_owner) bits.push('作者')
   foot.textContent = bits.join('　·　')
+  if(replyTarget){
+    const reply=document.createElement('button');reply.type='button';reply.className='reply-action';reply.textContent=t('reply.action');reply.disabled=!globalThis.QXReplies
+    reply.onclick=()=>globalThis.QXReplies?.open(replyTarget);foot.append(reply)
+  }
   card.append(foot)
   return card
 }
@@ -1757,6 +1838,12 @@ function noteCard(n) {
     d.append(thread)
   }
 
+  if(Array.isArray(n.deletedSubReplies)&&n.deletedSubReplies.length){
+    const history=document.createElement('details');history.className='sub-thread'
+    const summary=document.createElement('summary');summary.textContent=t('reply.history')+' ('+n.deletedSubReplies.length+')'
+    const rows=document.createElement('div');rows.className='subs'
+    renderSubReplies(rows,n.deletedSubReplies,new Set(),{pin:false,only:false});history.append(summary,rows);d.append(history)
+  }
   const ta = document.createElement('textarea')
   ta.className = 'mytext'
   ta.placeholder = t('note.placeholder')
@@ -2714,7 +2801,7 @@ $('noteMode').onchange = e => { state.noteMode = e.target.value; renderNotes() }
       lines.push([noteGameName(n), noteRegionName(n), n.floorId, n.nickname, n.uid, fmtTime(n.createdAt),
                   fmtTime(n.savedAt, true), n.text, n.content, n.clientIp,
                   Math.max(visibleSubReplies(n.subReplies || []).length, Number(n.subReplyCount) || 0),
-                  visibleSubReplies(n.subReplies || []).map(({ row, depth }) => '  '.repeat(depth) + ((row.user_info || {}).nickname || '') + (row.r_user?.nickname ? ' → ' + row.r_user.nickname : '') + ': ' + (row.content || '')).join('\n')].map(q).join(','))
+                  visibleSubReplies(n.subReplies || []).map(({ row, depth }) => '  '.repeat(depth) + ((row.user_info || {}).nickname || '') + (row.r_user?.nickname && !(row.r_user.uid!=null&&row.user_info?.uid!=null&&String(row.r_user.uid)===String(row.user_info.uid)) ? ' → ' + row.r_user.nickname : '') + ': ' + (row.content || '')).join('\n')].map(q).join(','))
     }
     const d = new Date()
     const stamp = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0')
@@ -3233,5 +3320,7 @@ initReadingHeader()
 <script src="/onboarding.js"></script>
 <script src="/batch-add.js"></script>
 <script src="/appearance.js"></script>
+<script src="/accounts-panel.js" onerror="document.getElementById('accountMessage').textContent=t('new.restartRequired')"></script>
+<script src="/reply-panel.js"></script>
 </body>
 </html>
